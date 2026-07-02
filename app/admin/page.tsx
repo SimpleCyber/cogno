@@ -555,10 +555,16 @@ export default function AdminPage() {
                                  <span className="h-7 w-7 flex items-center justify-center bg-indigo-50 text-[#8B5CF6] rounded-lg text-[10px] font-black">{idx + 1}</span>
                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{q.type === 'mcq' ? 'Choice' : 'Essay'}</span>
                               </div>
-                              <input 
-                                 type="text" value={q.question} onChange={e => handleUpdateQuestion(idx, 'question', e.target.value)}
-                                 className="w-full text-lg font-bold text-slate-900 outline-none bg-transparent placeholder:text-slate-200"
+                              <textarea 
+                                 value={q.question} onChange={e => handleUpdateQuestion(idx, 'question', e.target.value)}
+                                 className="w-full text-lg font-bold text-slate-900 outline-none bg-transparent placeholder:text-slate-200 resize-none min-h-[40px]"
                                  placeholder="Type your question prompt here..."
+                                 rows={1}
+                                 onInput={(e) => {
+                                    const target = e.target as HTMLTextAreaElement;
+                                    target.style.height = 'auto';
+                                    target.style.height = target.scrollHeight + 'px';
+                                 }}
                               />
                               {q.type === 'mcq' && (
                                  <div className="mt-8 space-y-3">
@@ -613,7 +619,7 @@ export default function AdminPage() {
                            <div className="flex items-start gap-3">
                               <span className="text-sm font-bold text-slate-300">{i + 1}.</span>
                               <div className="flex-1">
-                                 <p className="text-base font-bold text-slate-900">{q.question}</p>
+                                 <p className="text-base font-bold text-slate-900 whitespace-pre-wrap">{q.question}</p>
                                  <div className="mt-2 space-y-2">
                                     {q.type === 'mcq' ? (
                                        <div className="grid grid-cols-1 gap-2">

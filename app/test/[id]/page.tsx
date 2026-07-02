@@ -132,7 +132,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
        <main className="mx-auto max-w-2xl px-6 py-12 sm:py-24">
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
              
-             <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 leading-tight tracking-tight mb-12">
+             <h2 className="text-lg sm:text-2xl font-bold text-slate-800 leading-normal tracking-tight mb-8 whitespace-pre-wrap">
                 {q.question}
              </h2>
              
