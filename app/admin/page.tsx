@@ -599,7 +599,7 @@ export default function AdminPage() {
       {/* DETAIL MODAL (Review) */}
       {selectedResult && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50">
-            <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-xl border border-slate-200">
+            <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-xl border border-slate-200">
                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                   <div>
                      <h2 className="text-xl font-bold text-slate-900">Evaluation Review</h2>
