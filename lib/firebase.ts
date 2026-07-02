@@ -13,9 +13,14 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Next.js build-time safety: 
+// Only initialize if we have an API Key OR we are in the browser
+const app = getApps().length > 0 
+  ? getApp() 
+  : (firebaseConfig.apiKey ? initializeApp(firebaseConfig) : null);
+
+const auth = app ? getAuth(app) : {} as any;
+const db = app ? getFirestore(app) : {} as any;
 const googleProvider = new GoogleAuthProvider();
 
 export { app, auth, db, googleProvider };
