@@ -120,7 +120,7 @@ const NAV_LINKS = [
   { label: "Services", href: "#services" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Testimonials", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "Contact", href: "auth" },
 ];
 
 const STATS = [
@@ -178,7 +178,8 @@ const WHY_CHOOSE_US = [
   {
     icon: Award,
     title: "Certified Professionals",
-    description: "Every counsellor and psychologist is verified and credentialed.",
+    description:
+      "Every counsellor and psychologist is verified and credentialed.",
   },
   {
     icon: GraduationCap,
@@ -219,7 +220,8 @@ const HOW_IT_WORKS = [
     icon: Handshake,
     step: "3",
     title: "Connect with Expert",
-    description: "Get matched with the right counsellor or psychologist for you.",
+    description:
+      "Get matched with the right counsellor or psychologist for you.",
   },
   {
     icon: Leaf,
@@ -262,12 +264,14 @@ const RESOURCES = [
   {
     icon: Wind,
     title: "Meditation",
-    description: "Guided breathing and mindfulness sessions to reset your mind.",
+    description:
+      "Guided breathing and mindfulness sessions to reset your mind.",
   },
   {
     icon: ClipboardCheck,
     title: "Self Assessment",
-    description: "Quick, confidential check-ins to understand how you're doing.",
+    description:
+      "Quick, confidential check-ins to understand how you're doing.",
   },
   {
     icon: PhoneCall,
@@ -281,7 +285,7 @@ const FOOTER_LINKS = {
     { label: "Home", href: "#home" },
     { label: "How It Works", href: "#how-it-works" },
     { label: "Testimonials", href: "#testimonials" },
-    { label: "Contact", href: "#contact" },
+    { label: "Contact", href: "auth" },
   ],
   services: [
     { label: "Peer Counselling", href: "#services" },
@@ -380,7 +384,7 @@ export default function Home() {
 
           <div className="hidden md:block">
             <a
-              href="#contact"
+              href="auth"
               className="rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               Get Started
@@ -392,7 +396,11 @@ export default function Home() {
             className="text-slate-700 md:hidden"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {menuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </nav>
 
@@ -411,7 +419,7 @@ export default function Home() {
                 </a>
               ))}
               <a
-                href="#contact"
+                href="auth"
                 onClick={() => setMenuOpen(false)}
                 className="mt-2 rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] px-5 py-2.5 text-center text-sm font-semibold text-white"
               >
@@ -441,8 +449,7 @@ export default function Home() {
           {/* Left column */}
           <div className="relative z-10 animate-fade-in-up text-center lg:text-left">
             <span className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-[#4F46E5] shadow-sm ring-1 ring-indigo-100">
-              <Sparkles className="h-3.5 w-3.5" />
-              A calmer way to be heard
+              <Sparkles className="h-3.5 w-3.5" />A calmer way to be heard
             </span>
             <h1 className="font-display text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Your Mental Health{" "}
@@ -583,7 +590,10 @@ export default function Home() {
       </section>
 
       {/* ============================== HOW IT WORKS ============================== */}
-      <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+      <section
+        id="how-it-works"
+        className="mx-auto max-w-7xl px-6 py-24 lg:px-8"
+      >
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
             How It Works
@@ -714,19 +724,19 @@ export default function Home() {
             Take the First Step Towards Better Mental Health.
           </h2>
           <p className="relative mx-auto mt-4 max-w-xl text-indigo-50">
-            You don't have to navigate this alone. Reach out today — support
-            is closer than you think.
+            You don't have to navigate this alone. Reach out today — support is
+            closer than you think.
           </p>
           <div className="relative mt-8 flex flex-col justify-center gap-4 sm:flex-row">
             <a
-              href="#contact"
+              href="auth"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-[#4F46E5] shadow-lg transition-all duration-300 hover:scale-105"
             >
               Talk to a Peer Counsellor
               <ArrowRight className="h-4 w-4" />
             </a>
             <a
-              href="#contact"
+              href="auth"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-white/10 px-6 py-3.5 text-sm font-semibold text-white ring-1 ring-white/40 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:bg-white/20"
             >
               Book a Psychologist
@@ -750,8 +760,8 @@ export default function Home() {
                 </span>
               </div>
               <p className="mt-4 text-sm leading-relaxed text-slate-500">
-                A calm, confidential space connecting you with peer
-                counsellors and psychologists who care.
+                A calm, confidential space connecting you with peer counsellors
+                and psychologists who care.
               </p>
               <div className="mt-5 flex gap-3">
                 {SOCIALS.map(({ icon: Icon, href, label }) => (
