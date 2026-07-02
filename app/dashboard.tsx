@@ -25,10 +25,12 @@ export default function Dashboard({ user }: { user: any }) {
       try {
         const q = query(collection(db, "assessments"), orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
-        const dynamicAssessments = snap.docs.map(doc => ({
+        const dynamicAssessments = snap.docs
+          .map(doc => ({
            id: doc.id,
            ...doc.data()
-        }));
+          }))
+          .filter((a: any) => a.status !== "disabled");
         setCourses(dynamicAssessments);
       } catch(err) {
         console.error("Error fetching assessments", err);

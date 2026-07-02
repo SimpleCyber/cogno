@@ -9,7 +9,7 @@ import {
   Loader2, ShieldAlert, ArrowLeft, Eye, X, User, Plus, Trash2, 
   CheckCircle2, AlertCircle, Pencil, FileText, LayoutDashboard, 
   Settings, Home, Leaf, ChevronRight, BarChart3, Users, Clock, 
-  Share2, MoreVertical, Search, Filter, Radio
+  Share2, MoreVertical, Search, Filter, Radio, Check
 } from "lucide-react";
 import Link from "next/link";
 
@@ -210,6 +210,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleToggleStatus = async (assessment: any) => {
+    const newStatus = assessment.status === "disabled" ? "live" : "disabled";
+    
+    // Optimistic Update
+    setAssessments(prev => prev.map(a => a.id === assessment.id ? { ...a, status: newStatus } : a));
+    
+    try {
+      await updateDoc(doc(db, "assessments", assessment.id), {
+        status: newStatus
+      });
+      showToast(`Assessment ${newStatus === 'live' ? 'enabled' : 'disabled'}.`);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to toggle status.", "error");
+      // Rollback
+      fetchAssessments();
+    }
+  };
+
   // Helper metric calculation
   const totalSubmissions = results.length;
   const avgCompletion = assessments.length > 0 ? 98 : 0; // Mock stat for UI
@@ -239,7 +258,7 @@ export default function AdminPage() {
             <div className="h-9 w-9 bg-[#A855F7] rounded-[10px] flex items-center justify-center text-white shadow-lg shadow-indigo-100">
                <CheckCircle2 className="h-5 w-5 stroke-[2.5px]" />
             </div>
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">testsplatfrom</span>
+            <span className="text-xl font-extrabold tracking-tight text-slate-900">Cogno Test</span>
          </div>
 
          <nav className="flex-1 px-4 space-y-1.5">
@@ -321,9 +340,6 @@ export default function AdminPage() {
                         <button onClick={openNewEditor} className="px-6 py-3.5 bg-[#8B5CF6] text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-[#7C3AED] transition transform active:scale-95 flex items-center gap-2">
                            <Pencil className="h-4 w-4" /> Create test
                         </button>
-                        <button className="px-6 py-3.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition flex items-center gap-2">
-                           Publish <Share2 className="h-4 w-4" />
-                        </button>
                      </div>
                   </div>
 
@@ -378,9 +394,9 @@ export default function AdminPage() {
                               <thead>
                                  <tr className="border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
                                     <th className="px-8 py-5">Assessment Name</th>
-                                    <th className="px-8 py-5">Status</th>
                                     <th className="px-8 py-5">Questions</th>
                                     <th className="px-8 py-5">Duration</th>
+                                    <th className="px-8 py-5">Status</th>
                                     <th className="px-8 py-5 text-right">Action</th>
                                  </tr>
                               </thead>
@@ -391,11 +407,24 @@ export default function AdminPage() {
                                           <p className="font-extrabold text-slate-900 mb-1">{a.title}</p>
                                           <p className="text-xs font-medium text-slate-400 line-clamp-1">{a.description}</p>
                                        </td>
-                                       <td className="px-8 py-6">
-                                          <span className="px-2 py-1 bg-emerald-50 text-[#059669] text-[10px] font-black uppercase rounded-md ring-1 ring-emerald-100">Live</span>
-                                       </td>
+                                       
                                        <td className="px-8 py-6 text-sm font-bold text-slate-600">{a.questions?.length} items</td>
                                        <td className="px-8 py-6 text-sm font-black text-slate-400 tracking-tight">{a.duration}</td>
+
+                                       <td className="px-8 py-6">
+                                          <button 
+                                             onClick={() => handleToggleStatus(a)}
+                                             className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 transition-all active:scale-95 ${
+                                                a.status === 'disabled' 
+                                                ? 'bg-slate-100 text-slate-400 ring-slate-200 hover:bg-slate-200' 
+                                                : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
+                                             }`}
+                                          >
+                                             {a.status === 'disabled' ? 'Disabled' : 'Live'}
+                                          </button>
+                                       </td>
+
+                                       
                                        <td className="px-8 py-6 text-right">
                                           <div className="flex items-center justify-end gap-2">
                                              <button onClick={() => openEditEditor(a)} className="px-4 py-2 bg-slate-50 text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-200 transition">Edit</button>
@@ -563,36 +592,59 @@ export default function AdminPage() {
 
       {/* DETAIL MODAL (Review) */}
       {selectedResult && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-[800px] max-h-[85vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
-               <div className="p-10 border-b border-slate-50 flex items-start justify-between">
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50">
+            <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-xl border border-slate-200">
+               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                   <div>
-                     <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight italic-none">Evaluation Review</h2>
-                     <p className="mt-2 text-sm font-bold text-slate-400 uppercase tracking-widest">{selectedResult.name} | {selectedResult.email}</p>
+                     <h2 className="text-xl font-bold text-slate-900">Evaluation Review</h2>
+                     <p className="text-sm font-medium text-slate-500 mt-0.5">{selectedResult.name} | {selectedResult.email}</p>
                   </div>
-                  <button onClick={() => setSelectedResult(null)} className="p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition"><X className="h-6 w-6 text-slate-400" /></button>
+                  <button onClick={() => setSelectedResult(null)} className="p-2 text-slate-400 hover:text-slate-600">
+                     <X className="h-5 w-5" />
+                  </button>
                </div>
-               <div className="flex-1 overflow-y-auto p-10 space-y-8 pb-32">
+               
+               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   {selectedResult.questionPayload?.map((q: any, i: number) => {
                      const ans = selectedResult.answers[i];
                      const ansT = q.type === 'text' ? ans : q.options[ans];
                      return (
-                        <div key={i} className="bg-slate-50/50 rounded-[32px] p-8 border border-slate-50 transition-all hover:bg-white hover:shadow-xl hover:shadow-indigo-50 group">
-                           <div className="flex items-center gap-3 mb-6">
-                              <span className="h-6 w-6 flex items-center justify-center bg-indigo-50 text-indigo-500 rounded-lg text-[10px] font-black uppercase">{i + 1}</span>
-                              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest group-hover:text-indigo-300">Observation</span>
-                           </div>
-                           <p className="font-extrabold text-slate-900 text-xl leading-snug mb-6">{q.question}</p>
-                           <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-inner">
-                              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3">Response Input</p>
-                              <p className="text-base font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{ansT || ans || "None"}</p>
+                        <div key={i} className="space-y-3 pb-6 border-b border-slate-50 last:border-0 uppercase-none">
+                           <div className="flex items-start gap-3">
+                              <span className="text-sm font-bold text-slate-300">{i + 1}.</span>
+                              <div className="flex-1">
+                                 <p className="text-base font-bold text-slate-900">{q.question}</p>
+                                 <div className="mt-2 space-y-2">
+                                    {q.type === 'mcq' ? (
+                                       <div className="grid grid-cols-1 gap-2">
+                                          {q.options.map((opt: string, oIdx: number) => {
+                                             const isSelected = ans === oIdx;
+                                             return (
+                                                <div key={oIdx} className={`flex items-center gap-3 p-3 rounded-xl border ${isSelected ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>
+                                                   <div className={`h-2 w-2 rounded-full ${isSelected ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                                                   <span className="text-sm font-bold">{opt}</span>
+                                                   {isSelected && <Check className="h-4 w-4 ml-auto" />}
+                                                </div>
+                                             );
+                                          })}
+                                       </div>
+                                    ) : (
+                                       <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                                          <p className="text-sm font-medium text-slate-700 whitespace-pre-wrap">{ans || "No answer"}</p>
+                                       </div>
+                                    )}
+                                 </div>
+                              </div>
                            </div>
                         </div>
                      )
                   })}
                </div>
-               <div className="p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end">
-                  <button onClick={() => setSelectedResult(null)} className="px-10 py-4 bg-slate-900 text-white rounded-[20px] font-black uppercase tracking-widest text-xs hover:scale-105 transition shadow-xl">Close Review</button>
+
+               <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                  <button onClick={() => setSelectedResult(null)} className="px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
+                     Close
+                  </button>
                </div>
             </div>
          </div>
