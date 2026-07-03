@@ -90,16 +90,18 @@ export default function AdminChat() {
     // Auto-scroll on chat change
     setTimeout(scrollToBottom, 100);
 
-    // Sync retest request status
+    // Sync retest request status — simple query (no composite index needed)
     const retestQuery = query(
        collection(db, "retest_requests"),
-       where("userId", "==", selectedChat.userId),
-       orderBy("timestamp", "desc"),
-       limit(1)
+       where("userId", "==", selectedChat.userId)
     );
     const unsubscribeRetest = onSnapshot(retestQuery, (snap) => {
        if (!snap.empty) {
-          setSelectedChat(prev => prev ? { ...prev, retestStatus: snap.docs[0].data().status } : prev);
+          // Find most recent by sorting client-side
+          const sorted = snap.docs
+             .map(d => ({ ...d.data(), _ref: d.ref }))
+             .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+          setSelectedChat(prev => prev ? { ...prev, retestStatus: sorted[0].status } : prev);
        }
     });
 
@@ -251,7 +253,7 @@ export default function AdminChat() {
                               ? msg.content.split(':').slice(1).join(':').trim() 
                               : msg.content}
                         </p>
-                        {msg.content.startsWith('[SYSTEM REQUEST]') && !isAdmin && selectedChat.retestStatus === 'pending' && (
+                        {msg.content.startsWith('[SYSTEM REQUEST]') && !isAdmin && (
                            <div className="mt-4 pt-4 border-t border-amber-200 flex gap-2">
                               <button 
                                  onClick={async () => {
