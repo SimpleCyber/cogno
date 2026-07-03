@@ -101,7 +101,7 @@ export default function AdminChat() {
           const sorted = snap.docs
              .map(d => ({ ...d.data(), _ref: d.ref }))
              .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-          setSelectedChat(prev => prev ? { ...prev, retestStatus: sorted[0].status } : prev);
+          setSelectedChat(prev => prev ? { ...prev, retestStatus: (sorted[0] as any).status } : prev);
        }
     });
 
