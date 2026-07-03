@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { BookOpen, LogOut, FileText, ArrowRight, Leaf, User, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import ChatWidget from "@/components/ChatWidget";
 
 export default function Dashboard({ user }: { user: any }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -164,6 +165,8 @@ export default function Dashboard({ user }: { user: any }) {
            </div>
         )}
       </main>
+
+      <ChatWidget user={user} />
     </div>
   );
 }

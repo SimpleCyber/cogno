@@ -12,12 +12,14 @@ import {
   Share2, MoreVertical, Search, Filter, Radio, Check
 } from "lucide-react";
 import Link from "next/link";
+import AdminChat from "@/components/AdminChat";
+import { MessageSquare } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<"results" | "tests">("tests");
+  const [activeTab, setActiveTab] = useState<"results" | "tests" | "chat">("tests");
 
   // Results State
   const [results, setResults] = useState<any[]>([]);
@@ -276,6 +278,13 @@ export default function AdminPage() {
                <BarChart3 className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'results' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
                Results
             </button>
+            <button 
+               onClick={() => { setActiveTab("chat"); resetEditor(); }}
+               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+            >
+               <MessageSquare className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'chat' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+               Messages
+            </button>
          
             
          </nav>
@@ -308,19 +317,14 @@ export default function AdminPage() {
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto">
          <div className="mx-auto max-w-[1200px] p-10 lg:p-14">
-            
-            {/* Nav Header */}
-            {!isEditing && (
-               <div className="mb-12 flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-slate-400 font-semibold text-sm">
-                     <button onClick={() => setActiveTab('tests')} className="hover:text-black transition">
-                        <ArrowLeft className="h-4 w-4 inline mr-2" /> 
-                        My tests
-                     </button>
+
+            {activeTab === "chat" && !isEditing && (
+               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="mb-10">
+                     <h1 className="text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight italic-none">Messages</h1>
+                     <p className="mt-2 font-bold text-slate-400">Manage real-time communication with your users.</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                     <button onClick={fetchAssessments} className="p-2 text-slate-400 hover:text-black transition"><Search className="h-5 w-5" /></button>
-                  </div>
+                  <AdminChat />
                </div>
             )}
 
@@ -343,42 +347,8 @@ export default function AdminPage() {
                      </div>
                   </div>
 
-                  {/* Metrics Grid */}
-                  <div className="grid grid-cols-4 gap-6 mb-16">
-                     {[
-                        { label: 'Applied', val: totalSubmissions * 2, progress: 100, color: '#F3F4F6', text: 'text-slate-900' },
-                        { label: 'Completed', val: totalSubmissions, progress: 98, color: '#DBEAFE', text: 'text-blue-600' },
-                        { label: 'Passed', val: Math.floor(totalSubmissions * 0.9), progress: 94, color: '#D1FAE5', text: 'text-emerald-500' },
-                        { label: 'Average result', val: '89%', progress: 89, color: '#D1FAE5', text: 'text-emerald-500' },
-                     ].map((stat, i) => (
-                        <div key={i} className="bg-white rounded-[24px] p-7 border border-slate-100 shadow-sm flex items-center justify-between">
-                           <div>
-                              <p className="text-sm font-bold text-slate-400 mb-2">{stat.label}</p>
-                              <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stat.val}</p>
-                           </div>
-                           <div className="relative h-14 w-14">
-                              <svg className="h-full w-full transform -rotate-90">
-                                 <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100" />
-                                 <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={150} strokeDashoffset={150 - (150 * stat.progress) / 100} className={stat.text} />
-                              </svg>
-                              <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-black ${stat.text}`}>{stat.progress}%</span>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-
                   {/* Links List View */}
-                  <div className="mb-8 flex items-center justify-between">
-                     <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                        Assessments <span className="text-slate-300 ml-1">{assessments.length}</span>
-                     </h2>
-                     <div className="flex items-center gap-2">
-                        <button className="p-2.5 text-[#8B5CF6] hover:bg-indigo-50 rounded-lg transition"><Search className="h-5 w-5" /></button>
-                        <button className="px-4 py-2.5 bg-[#F5F3FF] text-[#8B5CF6] text-xs font-black rounded-lg hover:bg-indigo-100 transition flex items-center gap-2">
-                           Create test <Plus className="h-4 w-4" />
-                        </button>
-                     </div>
-                  </div>
+                 
 
                   <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
                      {assessmentsLoading ? (
@@ -449,16 +419,10 @@ export default function AdminPage() {
                   </div>
 
                   <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-                     <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                           <button className="px-4 py-2 bg-[#F5F3FF] text-[#8B5CF6] text-xs font-black rounded-lg">View all results <ChevronRight className="h-3 w-3 inline ml-1" /></button>
-                           <span className="text-xs font-bold text-slate-400">Used {results.length}/100 slots</span>
-                        </div>
-                     </div>
                      <div className="overflow-x-auto">
                         <table className="w-full text-left">
                            <thead>
-                              <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                              <tr className="text-[11px] border-slate-50 bg-slate-50/30 font-bold text-slate-400 uppercase tracking-widest">
                                  <th className="px-8 py-5">Name</th>
                                  <th className="px-8 py-5">Status</th>
                                  <th className="px-8 py-5">Completed</th>
@@ -481,7 +445,7 @@ export default function AdminPage() {
                                        {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                       <button onClick={() => setSelectedResult(res)} className="px-3.5 py-1.5 bg-emerald-50 text-[#059669] text-xs font-black rounded-lg ring-1 ring-emerald-100">View Result</button>
+                                       <button onClick={() => setSelectedResult(res)} className="px-3.5 py-1.5 bg-emerald-50 text-[#059669] text-xs font-black rounded-lg ring-1 ring-emerald-100">View Result :)</button>
                                     </td>
                                  </tr>
                               ))}
