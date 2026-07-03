@@ -346,13 +346,13 @@ export default function AdminPage() {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto">
-         <div className="mx-auto max-w-[1200px] p-10 lg:p-14">
+         <div className="mx-auto max-w-[1200px] p-6 lg:p-8">
 
             {activeTab === "chat" && !isEditing && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-10">
-                     <h1 className="text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight italic-none">Messages</h1>
-                     <p className="mt-2 font-bold text-slate-400">Manage real-time communication with your users.</p>
+                  <div className="mb-6">
+                     <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Messages</h1>
+                     <p className="mt-1 text-sm font-bold text-slate-400">Manage real-time communication with your users.</p>
                   </div>
                   <AdminChat />
                </div>
@@ -360,10 +360,10 @@ export default function AdminPage() {
 
             {activeTab === "tests" && !isEditing && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-12 flex items-end justify-between">
+                  <div className="mb-8 flex items-end justify-between">
                      <div>
-                        <h1 className="text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight">Tests Overview</h1>
-                        <div className="mt-4 flex items-center gap-4">
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Tests Overview</h1>
+                        <div className="mt-2 flex items-center gap-4">
                            <span className="px-2.5 py-1 bg-[#D1FAE5] text-[#059669] text-[10px] font-extrabold uppercase rounded-md flex items-center gap-1.5 ring-1 ring-emerald-200">
                               <Radio className="h-3 w-3" /> Published
                            </span>
@@ -440,9 +440,9 @@ export default function AdminPage() {
 
             {activeTab === "results" && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-10">
-                     <h1 className="text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight italic-none">Results Inbox</h1>
-                     <p className="mt-2 font-bold text-slate-400">Review detailed performance for all dynamic tests.</p>
+                  <div className="mb-6">
+                     <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Results Inbox</h1>
+                     <p className="mt-1 text-sm font-bold text-slate-400">Review detailed performance for all dynamic tests.</p>
                   </div>
 
                   <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">

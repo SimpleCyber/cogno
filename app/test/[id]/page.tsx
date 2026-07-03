@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, doc, getDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, query, where, getDocs, orderBy, limit, updateDoc, serverTimestamp } from "firebase/firestore";
 
 export default function TestPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
   const [questions, setQuestions] = useState<any[]>([]);
   const [assessmentData, setAssessmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAssessmentValid, setIsAssessmentValid] = useState<boolean | null>(null);
   
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<any>({}); 
@@ -22,20 +23,27 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alreadyTaken, setAlreadyTaken] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
+  const [retestStatus, setRetestStatus] = useState<"none" | "pending" | "approved" | "denied">("none");
+  const [retestNote, setRetestNote] = useState("");
+  const [isRequestingRetest, setIsRequestingRetest] = useState(false);
 
   useEffect(() => {
     const fetchAssessment = async () => {
-       try {
-          const docRef = doc(db, "assessments", id);
-          const snap = await getDoc(docRef);
-          if (snap.exists()) {
-             const data = snap.data();
-             setQuestions(data.questions || []);
-             setAssessmentData(data);
-          }
-       } catch (error) {
-          console.error("Error fetching test", error);
-       }
+      try {
+        const docRef = doc(db, "assessments", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setAssessmentData(data);
+          setQuestions(data.questions || []);
+          setIsAssessmentValid(true);
+        } else {
+          setIsAssessmentValid(false);
+        }
+      } catch (err) {
+        console.error(err);
+        setIsAssessmentValid(false);
+      }
     };
 
     const checkPreviousAttempt = async (user: User | null) => {
@@ -55,10 +63,44 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
        }
     };
 
+    const checkRetestStatus = async (user: User) => {
+       try {
+          const q = query(
+             collection(db, "retest_requests"),
+             where("userId", "==", user.uid),
+             where("assessmentId", "==", id),
+             where("status", "==", "approved"),
+             where("consumed", "==", false),
+             orderBy("timestamp", "desc"),
+             limit(1)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+             setRetestStatus('approved');
+             setAlreadyTaken(false); // Override!
+          } else {
+             // Check for pending/denied if no active approved one exists
+             const q2 = query(
+                collection(db, "retest_requests"),
+                where("userId", "==", user.uid),
+                where("assessmentId", "==", id),
+                orderBy("timestamp", "desc"),
+                limit(1)
+             );
+             const snap2 = await getDocs(q2);
+             if (!snap2.empty) {
+                setRetestStatus(snap2.docs[0].data().status);
+             }
+          }
+       } catch (err) {
+          console.error("Error checking retest status", err);
+       }
+    };
+
     fetchAssessment();
     const unsub = auth.onAuthStateChanged((user: User | null) => {
        if (user) {
-          checkPreviousAttempt(user);
+          checkPreviousAttempt(user).then(() => checkRetestStatus(user));
        }
        setAuthChecking(false);
        setLoading(false);
@@ -67,21 +109,24 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
     return () => unsub();
   }, [id]);
   
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
-      </div>
-    )
+  if (loading || authChecking || isAssessmentValid === null) {
+      return (
+         <div className="flex h-screen w-full flex-col items-center justify-center bg-white gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-[#4F46E5]" />
+            <p className="text-xs font-black text-slate-300 uppercase tracking-widest animate-pulse">Initializing Assessment...</p>
+         </div>
+      );
   }
 
-  if (!questions || questions.length === 0) {
+  if (isAssessmentValid === false) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-white p-6">
-         <p className="text-slate-500 font-medium">Assessment not found.</p>
-         <Link href="/" className="mt-4 text-[#4F46E5] hover:underline">Return to Dashboard</Link>
+      <div className="flex min-h-screen items-center justify-center bg-white p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 shadow-sm border border-slate-100 p-8 rounded-3xl">Assessment not found</h1>
+          <button onClick={() => router.push('/')} className="mt-6 text-sm font-bold text-[#4F46E5] hover:underline">Return to Dashboard</button>
+        </div>
       </div>
-    )
+    );
   }
 
   const q = questions[currentIdx];
@@ -109,6 +154,20 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
               timestamp: Date.now(),
               viewed: false
            });
+
+           // Consume retest permission if it existed
+           const q = query(
+              collection(db, "retest_requests"),
+              where("userId", "==", auth.currentUser.uid),
+              where("assessmentId", "==", id),
+              where("status", "==", "approved"),
+              where("consumed", "==", false)
+           );
+           const snap = await getDocs(q);
+           if (!snap.empty) {
+              await updateDoc(snap.docs[0].ref, { consumed: true });
+           }
+
            setFinished(true);
          } catch (err) {
            alert("Submission failed. Please try again.");
@@ -150,9 +209,79 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
             </div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Requirement Met</h1>
             <p className="mt-3 text-slate-600 font-medium">You have already completed this assessment. Each test can only be taken once.</p>
+            
+            {retestStatus === 'none' ? (
+               <div className="mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <p className="text-xs font-black text-slate-300 uppercase tracking-widest mb-4">Request a Retake</p>
+                  <textarea 
+                     value={retestNote}
+                     onChange={(e) => setRetestNote(e.target.value)}
+                     placeholder="Why would you like to take this test again?"
+                     className="w-full bg-slate-50 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 transition min-h-[100px]"
+                  />
+                  <button
+                     disabled={!retestNote.trim() || isRequestingRetest}
+                     onClick={async () => {
+                        if (!auth.currentUser) return;
+                        setIsRequestingRetest(true);
+                        try {
+                           const payload = {
+                              userId: auth.currentUser.uid,
+                              userEmail: auth.currentUser.email,
+                              userName: auth.currentUser.displayName || "Student",
+                              assessmentId: id,
+                              paperName: assessmentData?.title || id,
+                              note: retestNote,
+                              status: 'pending',
+                              consumed: false,
+                              timestamp: Date.now()
+                           };
+                           await addDoc(collection(db, "retest_requests"), payload);
+                           
+                           // Also send a message to admin chat
+                           await addDoc(collection(db, "chats", auth.currentUser.uid, "messages"), {
+                              senderId: auth.currentUser.uid,
+                              content: `[SYSTEM REQUEST] Retest request for "${assessmentData?.title}": ${retestNote}`,
+                              timestamp: serverTimestamp(),
+                              isAdmin: false,
+                              isSystem: true
+                           });
+                           
+                           await updateDoc(doc(db, "chats", auth.currentUser.uid), {
+                              lastMessage: "Requested a test retake",
+                              lastTimestamp: serverTimestamp(),
+                              isAdminUnread: true,
+                              updatedAt: serverTimestamp()
+                           });
+
+                           setRetestStatus('pending');
+                        } catch (err) {
+                           console.error(err);
+                        } finally {
+                           setIsRequestingRetest(false);
+                        }
+                     }}
+                     className="mt-4 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl hover:bg-slate-800 transition disabled:opacity-30"
+                  >
+                     {isRequestingRetest ? "Sending..." : "Submit Request"}
+                  </button>
+               </div>
+            ) : (
+               <div className="mt-10 p-8 rounded-3xl bg-slate-50 border border-slate-100 border-dashed text-center">
+                  <div className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-3 ${retestStatus === 'pending' ? 'bg-amber-100 text-amber-700' : retestStatus === 'denied' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                     Request {retestStatus}
+                  </div>
+                  <p className="text-sm font-bold text-slate-500">
+                     {retestStatus === 'pending' && "Your request for a retake has been submitted and is currently under review."}
+                     {retestStatus === 'denied' && "Your request for a retake was declined by the administrator."}
+                     {retestStatus === 'approved' && "Your request has been approved! You can now start the test again."}
+                  </p>
+               </div>
+            )}
+
             <button
                onClick={() => router.push("/")}
-               className="mt-10 w-full rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-bold text-white shadow-xl hover:bg-indigo-700 transition"
+               className="mt-6 w-full rounded-2xl bg-white border border-slate-200 px-6 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 transition"
             >
                Go Back
             </button>

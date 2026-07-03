@@ -145,7 +145,7 @@ export default function ChatWidget({ user }: { user: any }) {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="flex h-[550px] w-[380px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl animate-in slide-in-from-bottom-5 duration-300">
+        <div className="flex h-[680px] w-[380px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
           <div className="bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] p-6 text-white">
             <div className="flex items-center justify-between">

@@ -4,13 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { 
   Search, Send, User, MessageSquare, 
   Clock, ShieldCheck, Loader2, CheckCheck,
-  ChevronRight, Filter
+  ChevronRight, Filter, X, Check
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { 
   collection, query, orderBy, onSnapshot, 
   doc, updateDoc, addDoc, serverTimestamp, 
-  limit, where 
+  limit, where, getDocs 
 } from "firebase/firestore";
 
 interface Chat {
@@ -23,6 +23,7 @@ interface Chat {
   isAdminUnread: boolean;
   isUserUnread: boolean;
   updatedAt: any;
+  retestStatus?: string;
 }
 
 interface Message {
@@ -89,8 +90,24 @@ export default function AdminChat() {
     // Auto-scroll on chat change
     setTimeout(scrollToBottom, 100);
 
-    return () => unsubscribe();
-  }, [selectedChat]);
+    // Sync retest request status
+    const retestQuery = query(
+       collection(db, "retest_requests"),
+       where("userId", "==", selectedChat.userId),
+       orderBy("timestamp", "desc"),
+       limit(1)
+    );
+    const unsubscribeRetest = onSnapshot(retestQuery, (snap) => {
+       if (!snap.empty) {
+          setSelectedChat(prev => prev ? { ...prev, retestStatus: snap.docs[0].data().status } : prev);
+       }
+    });
+
+    return () => {
+       unsubscribe();
+       unsubscribeRetest();
+    };
+  }, [selectedChat?.userId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,11 +151,11 @@ export default function AdminChat() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-180px)] overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-xl shadow-slate-200/40">
+    <div className="flex h-[calc(100vh-150px)] overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-xl shadow-slate-200/40">
       {/* Sidebar: Chat List */}
       <div className="w-[350px] flex flex-col border-r border-slate-100">
-        <div className="p-6 border-b border-slate-50 bg-slate-50/30">
-          <h2 className="text-xl font-extrabold text-slate-900 mb-4">Messages</h2>
+        <div className="p-4 border-b border-slate-50 bg-slate-50/30">
+          <h2 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-tighter">Messages</h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <input 
@@ -173,9 +190,9 @@ export default function AdminChat() {
                 </div>
                 <div className="flex-1 text-left">
                   <div className="flex items-center justify-between mb-1">
-                    <p className={`text-sm font-bold ${chat.isAdminUnread ? 'text-red-500' : 'text-slate-700'}`}>{chat.userName}</p>
-                    <p className="text-[10px] font-bold text-slate-400">
-                      {chat.updatedAt ? new Date(chat.updatedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                    <p className={`text-sm font-bold ${chat.isAdminUnread ? 'text-slate-900' : 'text-slate-700'}`}>{chat.userName}</p>
+                     <p className="text-[10px] font-bold text-slate-400">
+                      {chat.updatedAt ? new Date(typeof chat.updatedAt.toDate === 'function' ? chat.updatedAt.toDate() : chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                     </p>
                   </div>
                   <p className={`text-xs truncate max-w-[180px] ${chat.isAdminUnread ? 'text-[#4F46E5] font-bold' : 'text-slate-400 font-medium'}`}>
@@ -193,14 +210,14 @@ export default function AdminChat() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-slate-100 overflow-hidden ring-2 ring-slate-50">
-                   {selectedChat.userPhoto ? <img src={selectedChat.userPhoto} alt="" /> : <div className="h-full w-full flex items-center justify-center text-xs font-black text-slate-400">{selectedChat.userName.charAt(0)}</div>}
+            <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-slate-50">
+                   {selectedChat.userPhoto ? <img src={selectedChat.userPhoto} alt="" /> : <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400">{selectedChat.userName.charAt(0)}</div>}
                 </div>
                 <div>
-                   <h3 className="font-extrabold text-slate-900">{selectedChat.userName}</h3>
-                   <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Active now</p>
+                   <h3 className="text-sm font-bold text-slate-900 leading-none">{selectedChat.userName}</h3>
+                   <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Active</p>
                 </div>
               </div>
                <div className="flex items-center gap-3">
@@ -222,18 +239,68 @@ export default function AdminChat() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map((msg, idx) => {
                 const isAdmin = msg.isAdmin;
                 return (
                   <div key={msg.id || idx} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                     <div className="flex flex-col gap-1.5 max-w-[70%]">
-                      <div className={`p-4 rounded-2xl text-sm shadow-sm ${isAdmin ? 'bg-[#4F46E5] text-white rounded-br-none' : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'}`}>
-                        <p className="font-semibold leading-relaxed">{msg.content}</p>
+                      <div className={`p-4 rounded-2xl text-sm shadow-sm ${isAdmin ? 'bg-[#4F46E5] text-white rounded-br-none' : (msg.content.startsWith('[SYSTEM REQUEST]') ? 'bg-amber-50 border-amber-200 text-amber-900 ring-1 ring-amber-100' : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none')}`}>
+                        <p className="font-semibold leading-relaxed">
+                           {msg.content.startsWith('[SYSTEM REQUEST]') 
+                              ? msg.content.split(':').slice(1).join(':').trim() 
+                              : msg.content}
+                        </p>
+                        {msg.content.startsWith('[SYSTEM REQUEST]') && !isAdmin && selectedChat.retestStatus === 'pending' && (
+                           <div className="mt-4 pt-4 border-t border-amber-200 flex gap-2">
+                              <button 
+                                 onClick={async () => {
+                                    try {
+                                       const q = query(collection(db, "retest_requests"), where("userId", "==", selectedChat.userId), where("status", "==", "pending"));
+                                       const snap = await getDocs(q);
+                                       if (!snap.empty) {
+                                          await updateDoc(snap.docs[0].ref, { status: 'approved' });
+                                          await addDoc(collection(db, "chats", selectedChat.userId, "messages"), {
+                                             senderId: "admin",
+                                             content: "Your retest request has been APPROVED. You can now retake the assessment.",
+                                             timestamp: serverTimestamp(),
+                                             isAdmin: true
+                                          });
+                                          alert("Request approved.");
+                                       }
+                                    } catch (err) { console.error(err); }
+                                 }}
+                                 className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-emerald-700 transition shadow-md"
+                              >
+                                 Approve
+                              </button>
+                              <button 
+                                 onClick={async () => {
+                                    try {
+                                       const q = query(collection(db, "retest_requests"), where("userId", "==", selectedChat.userId), where("status", "==", "pending"));
+                                       const snap = await getDocs(q);
+                                       if (!snap.empty) {
+                                          await updateDoc(snap.docs[0].ref, { status: 'denied' });
+                                          await addDoc(collection(db, "chats", selectedChat.userId, "messages"), {
+                                             senderId: "admin",
+                                             content: "Your retest request has been declined.",
+                                             timestamp: serverTimestamp(),
+                                             isAdmin: true
+                                          });
+                                          alert("Request denied.");
+                                       }
+                                    } catch (err) { console.error(err); }
+                                 }}
+                                 className="px-3 py-1.5 bg-red-500 text-white text-[10px] font-black uppercase rounded-lg hover:bg-red-600 transition shadow-md"
+                              >
+                                 Deny
+                              </button>
+                           </div>
+                        )}
                       </div>
                       <div className={`flex items-center gap-2 px-1 ${isAdmin ? 'justify-end' : 'justify-start'}`}>
                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                           {msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."}
+                           {msg.timestamp ? new Date(typeof msg.timestamp.toDate === 'function' ? msg.timestamp.toDate() : msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."}
                          </p>
                          {isAdmin && <CheckCheck className="h-3 w-3 text-[#4F46E5]" />}
                       </div>
