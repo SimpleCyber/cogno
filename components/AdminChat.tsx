@@ -86,12 +86,8 @@ export default function AdminChat() {
       setTimeout(scrollToBottom, 50);
     });
 
-    // Mark as read
-    if (selectedChat.isAdminUnread) {
-      updateDoc(doc(db, "chats", selectedChat.userId), {
-        isAdminUnread: false
-      });
-    }
+    // Auto-scroll on chat change
+    setTimeout(scrollToBottom, 100);
 
     return () => unsubscribe();
   }, [selectedChat]);
@@ -172,12 +168,12 @@ export default function AdminChat() {
                     {chat.userPhoto ? <img src={chat.userPhoto} alt="" /> : <div className="h-full w-full flex items-center justify-center text-xs font-black text-slate-400">{chat.userName.charAt(0)}</div>}
                   </div>
                   {chat.isAdminUnread && (
-                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-[#4F46E5] rounded-full ring-2 ring-white" />
+                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full ring-2 ring-white" />
                   )}
                 </div>
                 <div className="flex-1 text-left">
                   <div className="flex items-center justify-between mb-1">
-                    <p className={`text-sm font-bold ${chat.isAdminUnread ? 'text-slate-900' : 'text-slate-700'}`}>{chat.userName}</p>
+                    <p className={`text-sm font-bold ${chat.isAdminUnread ? 'text-red-500' : 'text-slate-700'}`}>{chat.userName}</p>
                     <p className="text-[10px] font-bold text-slate-400">
                       {chat.updatedAt ? new Date(chat.updatedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                     </p>
@@ -207,10 +203,22 @@ export default function AdminChat() {
                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Active now</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                 <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Clock className="h-5 w-5" /></button>
-                 <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Filter className="h-5 w-5" /></button>
-              </div>
+               <div className="flex items-center gap-3">
+                  {selectedChat.isAdminUnread && (
+                    <button 
+                       onClick={async () => {
+                          const chatDocRef = doc(db, "chats", selectedChat.userId);
+                          await updateDoc(chatDocRef, { isAdminUnread: false });
+                          setSelectedChat({...selectedChat, isAdminUnread: false});
+                       }}
+                       className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-lg ring-1 ring-emerald-100 hover:bg-emerald-100 transition active:scale-95 flex items-center gap-2"
+                    >
+                       <ShieldCheck className="h-3 w-3" /> Query Resolved
+                    </button>
+                  )}
+                  <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Clock className="h-5 w-5" /></button>
+                  <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Filter className="h-5 w-5" /></button>
+               </div>
             </div>
 
             {/* Messages Area */}

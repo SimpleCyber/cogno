@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -9,11 +9,10 @@ import {
   Loader2, ShieldAlert, ArrowLeft, Eye, X, User, Plus, Trash2, 
   CheckCircle2, AlertCircle, Pencil, FileText, LayoutDashboard, 
   Settings, Home, Leaf, ChevronRight, BarChart3, Users, Clock, 
-  Share2, MoreVertical, Search, Filter, Radio, Check
+  Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import AdminChat from "@/components/AdminChat";
-import { MessageSquare } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -24,6 +23,10 @@ export default function AdminPage() {
   // Results State
   const [results, setResults] = useState<any[]>([]);
   const [selectedResult, setSelectedResult] = useState<any>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [newResultsCount, setNewResultsCount] = useState(0);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
 
   // Tests State
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -63,9 +66,21 @@ export default function AdminPage() {
     try {
       const q = query(collection(db, "test_results"), orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
-      setResults(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const resData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setResults(resData);
+      setNewResultsCount(resData.filter((r: any) => !r.viewed).length);
     } catch (err) {
       console.error("Error fetching results", err);
+    }
+  };
+
+  const fetchUnreadMessages = async () => {
+    try {
+      const q = query(collection(db, "chats"), where("isAdminUnread", "==", true));
+      const snap = await getDocs(q);
+      setUnreadMessages(snap.size);
+    } catch (err) {
+      console.error("Error fetching unread messages", err);
     }
   };
 
@@ -75,6 +90,7 @@ export default function AdminPage() {
         setAuthorized(true);
         fetchResults();
         fetchAssessments();
+        fetchUnreadMessages();
         setLoading(false);
       } else {
         setAuthorized(false);
@@ -273,17 +289,31 @@ export default function AdminPage() {
             </button>
             <button 
                onClick={() => { setActiveTab("results"); resetEditor(); }}
-               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'results' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+               className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'results' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
             >
-               <BarChart3 className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'results' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-               Results
+               <div className="flex items-center gap-3.5">
+                  <BarChart3 className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'results' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                  Results
+               </div>
+               {newResultsCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                     {newResultsCount}
+                  </span>
+               )}
             </button>
             <button 
                onClick={() => { setActiveTab("chat"); resetEditor(); }}
-               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+               className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
             >
-               <MessageSquare className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'chat' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-               Messages
+               <div className="flex items-center gap-3.5">
+                  <MessageSquare className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'chat' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                  Messages
+               </div>
+               {unreadMessages > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                     {unreadMessages}
+                  </span>
+               )}
             </button>
          
             
@@ -346,9 +376,6 @@ export default function AdminPage() {
                         </button>
                      </div>
                   </div>
-
-                  {/* Links List View */}
-                 
 
                   <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
                      {assessmentsLoading ? (
@@ -422,21 +449,24 @@ export default function AdminPage() {
                      <div className="overflow-x-auto">
                         <table className="w-full text-left">
                            <thead>
-                              <tr className="text-[11px] border-slate-50 bg-slate-50/30 font-bold text-slate-400 uppercase tracking-widest">
-                                 <th className="px-8 py-5">Name</th>
-                                 <th className="px-8 py-5">Status</th>
-                                 <th className="px-8 py-5">Completed</th>
-                                 <th className="px-8 py-5 text-right">Score</th>
-                              </tr>
+                               <tr className="border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
+                                  <th className="px-8 py-5">Name & Contact</th>
+                                  <th className="px-8 py-5">Status</th>
+                                  <th className="px-8 py-5">Completed</th>
+                                  <th className="px-8 py-5 text-right">Action</th>
+                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-50">
                               {results.map((res) => (
-                                 <tr key={res.id} className="group hover:bg-slate-50/50 transition">
+                                 <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
                                     <td className="px-8 py-6 flex items-center gap-3">
                                        <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
                                           {res.photoURL ? <img src={res.photoURL} alt="" /> : <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400">{res.name?.charAt(0)}</div>}
                                        </div>
-                                       <span className="font-extrabold text-slate-900">{res.name}</span>
+                                       <div>
+                                          <span className="font-extrabold text-slate-900 block">{res.name}</span>
+                                          <span className="text-[10px] font-bold text-slate-400 block">{res.email}</span>
+                                       </div>
                                     </td>
                                     <td className="px-8 py-6">
                                        <span className="text-xs font-bold text-slate-500">Completed</span>
@@ -445,7 +475,16 @@ export default function AdminPage() {
                                        {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                       <button onClick={() => setSelectedResult(res)} className="px-3.5 py-1.5 bg-emerald-50 text-[#059669] text-xs font-black rounded-lg ring-1 ring-emerald-100">View Result :)</button>
+                                       <button 
+                                          onClick={() => setSelectedResult(res)} 
+                                          className={`px-3.5 py-1.5 text-xs font-black rounded-lg ring-1 transition-all ${
+                                             res.viewed 
+                                             ? 'bg-slate-50 text-slate-400 ring-slate-100' 
+                                             : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
+                                          }`}
+                                       >
+                                          {res.viewed ? 'View Result' : 'Review Now'}
+                                       </button>
                                     </td>
                                  </tr>
                               ))}
@@ -611,9 +650,81 @@ export default function AdminPage() {
                   })}
                </div>
 
-               <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+               <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                  <button 
+                     onClick={() => {
+                        setFeedbackText(selectedResult.feedback || "");
+                        setShowFeedbackModal(true);
+                     }}
+                     className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-2"
+                  >
+                     <Plus className="h-4 w-4" /> Feedback
+                  </button>
+                  {!selectedResult.viewed && (
+                     <button 
+                        onClick={async () => {
+                           await updateDoc(doc(db, "test_results", selectedResult.id), { viewed: true });
+                           fetchResults();
+                           setSelectedResult({...selectedResult, viewed: true});
+                           showToast("Marked as viewed");
+                        }} 
+                        className="px-6 py-2 bg-white border border-slate-200 text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-50 transition"
+                     >
+                        Mark as Viewed
+                     </button>
+                  )}
                   <button onClick={() => setSelectedResult(null)} className="px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
                      Close
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* FEEDBACK POPUP MODAL */}
+      {showFeedbackModal && selectedResult && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-emerald-100 animate-in zoom-in-95 duration-300">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                     <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">User Feedback</h3>
+               </div>
+               
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Evaluation Note</p>
+               <textarea 
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  className="w-full bg-slate-50 rounded-2xl p-5 text-sm font-bold text-slate-700 border-none outline-none focus:ring-2 focus:ring-emerald-500/20 transition min-h-[160px] placeholder:text-slate-300"
+                  placeholder="Share your thoughts on this assessment..."
+               />
+               
+               <div className="mt-8 flex gap-3">
+                  <button 
+                     onClick={() => setShowFeedbackModal(false)}
+                     className="flex-1 px-6 py-4 bg-slate-50 text-slate-500 rounded-2xl text-xs font-bold hover:bg-slate-100 transition"
+                  >
+                     Cancel
+                  </button>
+                  <button 
+                     onClick={async () => {
+                        try {
+                           await updateDoc(doc(db, "test_results", selectedResult.id), { 
+                              feedback: feedbackText,
+                              viewed: true
+                           });
+                           showToast("Feedback submitted successfully!");
+                           fetchResults();
+                           setSelectedResult({...selectedResult, feedback: feedbackText, viewed: true});
+                           setShowFeedbackModal(false);
+                        } catch (err) {
+                           showToast("Error saving feedback", "error");
+                        }
+                     }}
+                     className="flex-[2] px-6 py-4 bg-emerald-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-emerald-200/50 hover:bg-emerald-700 transition active:scale-95"
+                  >
+                     Save & Submit
                   </button>
                </div>
             </div>

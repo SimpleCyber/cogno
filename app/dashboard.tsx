@@ -1,6 +1,6 @@
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import { BookOpen, LogOut, FileText, ArrowRight, Leaf, User, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
@@ -12,6 +12,7 @@ export default function Dashboard({ user }: { user: any }) {
 
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userResults, setUserResults] = useState<any[]>([]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -21,25 +22,45 @@ export default function Dashboard({ user }: { user: any }) {
     }
     document.addEventListener("mousedown", handleClickOutside);
 
-    // Fetch Dynamic Assessments
-    const fetchAssessments = async () => {
-      try {
-        const q = query(collection(db, "assessments"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        const dynamicAssessments = snap.docs
-          .map(doc => ({
-           id: doc.id,
-           ...doc.data()
-          }))
-          .filter((a: any) => a.status !== "disabled");
-        setCourses(dynamicAssessments);
-      } catch(err) {
-        console.error("Error fetching assessments", err);
-      } finally {
+     // Fetch Dynamic Assessments
+     const fetchAssessments = async () => {
+       try {
+         const q = query(collection(db, "assessments"), orderBy("createdAt", "desc"));
+         const snap = await getDocs(q);
+         const dynamicAssessments = snap.docs
+           .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+           }))
+           .filter((a: any) => a.status !== "disabled");
+         setCourses(dynamicAssessments);
+       } catch(err) {
+         console.error("Error fetching assessments", err);
+       }
+     };
+
+     const fetchUserResults = async () => {
+       if (!user) return;
+       try {
+         const q = query(
+           collection(db, "test_results"), 
+           where("userId", "==", user.uid),
+           orderBy("timestamp", "desc")
+         );
+         const snap = await getDocs(q);
+         setUserResults(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+       } catch (err) {
+         console.error("Error fetching user results", err);
+       }
+     };
+
+     const loadData = async () => {
+        setLoading(true);
+        await Promise.all([fetchAssessments(), fetchUserResults()]);
         setLoading(false);
-      }
-    };
-    fetchAssessments();
+     };
+
+     loadData();
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -164,6 +185,53 @@ export default function Dashboard({ user }: { user: any }) {
              ))}
            </div>
         )}
+         {userResults.length > 0 && (
+           <div className="mt-20">
+              <h2 className="font-display text-2xl font-bold text-slate-900">Your Evaluation History</h2>
+              <p className="mt-2 text-slate-500 font-medium">Review your past performance and coach feedback.</p>
+              
+              <div className="mt-8 space-y-4">
+                 {userResults.map((res) => (
+                    <div key={res.id} className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm hover:shadow-md transition-all">
+                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                             <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                <ShieldCheck className="h-6 w-6" />
+                             </div>
+                             <div>
+                                <h3 className="font-bold text-slate-900">{res.paperName}</h3>
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+                                   Completed {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}
+                                </p>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                             <span className="px-3 py-1 bg-slate-50 text-slate-400 text-[10px] font-black uppercase rounded-md ring-1 ring-slate-100">Evaluated</span>
+                          </div>
+                       </div>
+
+                       {res.feedback && (
+                          <div className="mt-6 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                             <div className="flex items-center gap-2 mb-3">
+                                <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Coach Feedback</span>
+                             </div>
+                             <p className="text-sm font-medium text-slate-700 leading-relaxed italic-none">
+                                {res.feedback}
+                             </p>
+                          </div>
+                       )}
+
+                       {!res.feedback && (
+                          <div className="mt-6 p-5 bg-slate-50/50 rounded-2xl border border-slate-100 border-dashed">
+                             <p className="text-xs font-bold text-slate-400 italic">Feedback pending from administrator...</p>
+                          </div>
+                       )}
+                    </div>
+                 ))}
+              </div>
+           </div>
+         )}
       </main>
 
       <ChatWidget user={user} />

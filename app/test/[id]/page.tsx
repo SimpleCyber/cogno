@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, query, where, getDocs } from "firebase/firestore";
 
 export default function TestPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
   const [answers, setAnswers] = useState<any>({}); 
   const [finished, setFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alreadyTaken, setAlreadyTaken] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
     const fetchAssessment = async () => {
@@ -32,11 +35,36 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
           }
        } catch (error) {
           console.error("Error fetching test", error);
-       } finally {
-          setLoading(false);
        }
     };
+
+    const checkPreviousAttempt = async (user: User | null) => {
+       if (!user) return;
+       try {
+          const q = query(
+             collection(db, "test_results"), 
+             where("userId", "==", user.uid),
+             where("assessmentId", "==", id)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+             setAlreadyTaken(true);
+          }
+       } catch (err) {
+          console.error("Error checking attempt", err);
+       }
+    };
+
     fetchAssessment();
+    const unsub = auth.onAuthStateChanged((user: User | null) => {
+       if (user) {
+          checkPreviousAttempt(user);
+       }
+       setAuthChecking(false);
+       setLoading(false);
+    });
+
+    return () => unsub();
   }, [id]);
   
   if (loading) {
@@ -75,9 +103,11 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
               email: auth.currentUser.email,
               name: auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || "Unknown",
               paperName: assessmentData?.title || id,
+              assessmentId: id,
               answers: answersArray,
               questionPayload: questions,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              viewed: false
            });
            setFinished(true);
          } catch (err) {
@@ -93,7 +123,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
      if (currentIdx > 0) setCurrentIdx(currentIdx - 1);
   }
 
-  if (finished) {
+   if (finished) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white p-6">
          <div className="w-full max-w-sm text-center">
@@ -103,6 +133,26 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
             <button
                onClick={() => router.push("/")}
                className="mt-10 w-full rounded-2xl bg-black px-6 py-4 text-sm font-bold text-white shadow-xl hover:bg-slate-800 transition"
+            >
+               Go Back
+            </button>
+         </div>
+      </div>
+    );
+  }
+
+   if (alreadyTaken) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white p-6">
+         <div className="w-full max-w-sm text-center">
+            <div className="h-16 w-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+               <CheckCircle2 className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Requirement Met</h1>
+            <p className="mt-3 text-slate-600 font-medium">You have already completed this assessment. Each test can only be taken once.</p>
+            <button
+               onClick={() => router.push("/")}
+               className="mt-10 w-full rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-bold text-white shadow-xl hover:bg-indigo-700 transition"
             >
                Go Back
             </button>
