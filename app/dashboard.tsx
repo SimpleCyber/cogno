@@ -233,7 +233,7 @@ export default function Dashboard({ user }: { user: any }) {
                     </p>
                   </div>
                   <div className="pt-2">
-                    {user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && (
+                    {user?.email && process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(",").map(e => e.trim()).includes(user.email) && (
                       <Link
                         href="/admin"
                         className="mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
