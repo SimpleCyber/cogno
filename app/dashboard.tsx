@@ -135,7 +135,7 @@ export default function Dashboard({ user }: { user: any }) {
 
       setUserRetests((prev) => [
         ...prev,
-        { assessmentId: courseId, status: "pending", note: retestNote, consumed: false },
+        { assessmentId: courseId, status: "pending", note: retestNote, consumed: false, timestamp: Date.now() },
       ]);
       setRetestPopup(null);
       setRetestNote("");
@@ -376,7 +376,7 @@ export default function Dashboard({ user }: { user: any }) {
                           onClick={() => setRequestedPopup(course.id)}
                           className="flex items-center gap-1 text-sm font-semibold text-amber-600 hover:text-amber-700 transition"
                         >
-                          <Clock className="h-4 w-4" /> Requested
+                          <Clock className="h-4 w-4" /> Request Sent
                         </button>
                       ) : (
                         <button

@@ -9,7 +9,8 @@ import {
   Loader2, ShieldAlert, ArrowLeft, Eye, X, User, Plus, Trash2, 
   CheckCircle2, AlertCircle, Pencil, FileText, LayoutDashboard, 
   Settings, Home, Leaf, ChevronRight, BarChart3, Users, Clock, 
-  Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare, CalendarCheck
+  Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare, CalendarCheck,
+  Archive, FolderArchive, ArchiveRestore, RotateCcw
 } from "lucide-react";
 import Link from "next/link";
 import AdminChat from "@/components/AdminChat";
@@ -24,6 +25,8 @@ export default function AdminPage() {
     requiredAssessmentId: "" 
   });
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchivedTests, setShowArchivedTests] = useState(false);
 
   const fetchGlobalSettings = async () => {
     try {
@@ -107,6 +110,29 @@ export default function AdminPage() {
       setNewResultsCount(resData.filter((r: any) => !r.viewed).length);
     } catch (err) {
       console.error("Error fetching results", err);
+    }
+  };
+
+  const handleDeleteResult = async (id: string) => {
+    if (!confirm("Permanently delete this result? The user will also lose access to this report.")) return;
+    try {
+      await deleteDoc(doc(db, "test_results", id));
+      showToast("Result deleted permanently");
+      fetchResults();
+    } catch (err) {
+      console.error(err);
+      showToast("Delete failed", "error");
+    }
+  };
+
+  const handleArchiveResult = async (id: string, archiveStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, "test_results", id), { isArchived: archiveStatus });
+      showToast(archiveStatus ? "Result moved to archive" : "Result restored from archive");
+      fetchResults();
+    } catch (err) {
+      console.error(err);
+      showToast("Action failed", "error");
     }
   };
 
@@ -302,6 +328,18 @@ export default function AdminPage() {
     }
   };
 
+  const handleArchiveAssessment = async (assessment: any, isArchived: boolean) => {
+    const newStatus = isArchived ? "archived" : "disabled";
+    try {
+      await updateDoc(doc(db, "assessments", assessment.id), { status: newStatus });
+      showToast(isArchived ? "Assessment archived" : "Assessment restored to draft");
+      fetchAssessments();
+    } catch (err) {
+      console.error(err);
+      showToast("Archive failed", "error");
+    }
+  };
+
   // Helper metric calculation
   const totalSubmissions = results.length;
   const avgCompletion = assessments.length > 0 ? 98 : 0; // Mock stat for UI
@@ -433,18 +471,31 @@ export default function AdminPage() {
 
             {activeTab === "tests" && !isEditing && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-8 flex items-end justify-between">
+                   <div className="mb-8 flex items-end justify-between">
                      <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Tests Overview</h1>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                           {showArchivedTests ? "Archived Tests" : "Tests Overview"}
+                        </h1>
                         <div className="mt-2 flex items-center gap-4">
-                           <span className="px-2.5 py-1 bg-[#D1FAE5] text-[#059669] text-[10px] font-extrabold uppercase rounded-md flex items-center gap-1.5 ring-1 ring-emerald-200">
-                              <Radio className="h-3 w-3" /> Published
+                           <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-md flex items-center gap-1.5 ring-1 ${showArchivedTests ? 'bg-amber-50 text-amber-600 ring-amber-100' : 'bg-[#D1FAE5] text-[#059669] ring-emerald-200'}`}>
+                              <Radio className="h-3 w-3" /> {showArchivedTests ? "Archived" : "Published"}
                            </span>
-                           <span className="text-xs font-bold text-slate-400">Total assessments: {assessments.length}</span>
+                           <span className="text-xs font-bold text-slate-400">Items count: {assessments.filter(a => showArchivedTests ? a.status === 'archived' : a.status !== 'archived').length}</span>
                         </div>
                      </div>
                      <div className="flex items-center gap-3">
-                        <button onClick={openNewEditor} className="px-6 py-3.5 bg-[#8B5CF6] text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-[#7C3AED] transition transform active:scale-95 flex items-center gap-2">
+                        <button 
+                           onClick={() => setShowArchivedTests(!showArchivedTests)}
+                           className={`px-6 py-3.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition transform active:scale-95 flex items-center gap-2 ${
+                              showArchivedTests 
+                              ? "bg-[#8B5CF6] text-white" 
+                              : "bg-white text-[#8B5CF6] border border-slate-100"
+                           }`}
+                        >
+                           {showArchivedTests ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                           {showArchivedTests ? "Active Tests" : "View Archive"}
+                        </button>
+                        <button onClick={openNewEditor} className="px-6 py-3.5 bg-white text-[#8B5CF6] rounded-xl text-sm font-bold border border-slate-100 shadow-lg shadow-indigo-100 hover:bg-slate-50 transition transform active:scale-95 flex items-center gap-2">
                            <Pencil className="h-4 w-4" /> Create test
                         </button>
                      </div>
@@ -471,11 +522,20 @@ export default function AdminPage() {
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
-                                 {assessments.map((a) => (
+                                 {assessments
+                                   .filter(a => showArchivedTests ? a.status === 'archived' : a.status !== 'archived')
+                                   .map((a) => (
                                     <tr key={a.id} className="group hover:bg-slate-50/50 transition">
                                        <td className="px-8 py-6">
-                                          <p className="font-extrabold text-slate-900 mb-1">{a.title}</p>
-                                          <p className="text-xs font-medium text-slate-400 line-clamp-1">{a.description}</p>
+                                          <div className="flex items-center gap-3">
+                                             <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 font-black text-xs">
+                                                {a.title?.charAt(0)}
+                                             </div>
+                                             <div>
+                                                <p className="font-extrabold text-slate-900 mb-0.5">{a.title}</p>
+                                                <p className="text-[10px] font-medium text-slate-400 line-clamp-1">{a.description}</p>
+                                             </div>
+                                          </div>
                                        </td>
                                        
                                        <td className="px-8 py-6 text-sm font-bold text-slate-600">{a.questions?.length} items</td>
@@ -484,13 +544,16 @@ export default function AdminPage() {
                                        <td className="px-8 py-6">
                                           <button 
                                              onClick={() => handleToggleStatus(a)}
-                                             className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 transition-all active:scale-95 ${
+                                             disabled={a.status === 'archived'}
+                                             className={`px-3 py-1 rounded-md text-[10px] font-black uppercase ring-1 transition-all active:scale-95 disabled:opacity-30 ${
                                                 a.status === 'disabled' 
                                                 ? 'bg-slate-100 text-slate-400 ring-slate-200 hover:bg-slate-200' 
-                                                : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
+                                                : a.status === 'archived' 
+                                                  ? 'bg-amber-50 text-amber-500 ring-amber-100'
+                                                  : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
                                              }`}
                                           >
-                                             {a.status === 'disabled' ? 'Disabled' : 'Live'}
+                                             {a.status}
                                           </button>
                                        </td>
 
@@ -498,7 +561,16 @@ export default function AdminPage() {
                                        <td className="px-8 py-6 text-right">
                                           <div className="flex items-center justify-end gap-2">
                                              <button onClick={() => openEditEditor(a)} className="px-4 py-2 bg-slate-50 text-slate-900 text-xs font-bold rounded-lg hover:bg-slate-200 transition">Edit</button>
-                                             <button onClick={() => handleDeleteAssessment(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition"><Trash2 className="h-4 w-4" /></button>
+                                             
+                                             <button 
+                                                onClick={() => handleArchiveAssessment(a, a.status !== 'archived')}
+                                                className={`p-2 transition-colors ${a.status === 'archived' ? 'text-indigo-400 hover:text-indigo-600' : 'text-slate-300 hover:text-amber-500'}`}
+                                                title={a.status === 'archived' ? "Restore from Archive" : "Archive Test"}
+                                             >
+                                                {a.status === 'archived' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                             </button>
+
+                                             <button onClick={() => handleDeleteAssessment(a.id)} className="p-2 text-slate-200 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
                                           </div>
                                        </td>
                                     </tr>
@@ -664,11 +736,28 @@ export default function AdminPage() {
                   </div>
                </div>
             )}
-            {activeTab === "results" && (
+             {activeTab === "results" && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-6">
-                     <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Results Inbox</h1>
-                     <p className="mt-1 text-sm font-bold text-slate-400">Review detailed performance for all dynamic tests.</p>
+                  <div className="mb-6 flex items-end justify-between">
+                     <div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                           {showArchived ? "Archived Results" : "Results Inbox"}
+                        </h1>
+                        <p className="mt-1 text-sm font-bold text-slate-400">
+                           {showArchived ? "Viewing archived psychological evaluations." : "Review detailed performance for all dynamic tests."}
+                        </p>
+                     </div>
+                     <button 
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+                           showArchived 
+                           ? "bg-slate-900 text-white shadow-slate-200" 
+                           : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50"
+                        }`}
+                     >
+                        {showArchived ? <FolderArchive className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        {showArchived ? "Show Active" : "View Archive"}
+                     </button>
                   </div>
 
                   <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
@@ -683,38 +772,68 @@ export default function AdminPage() {
                                </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-50">
-                              {results.map((res) => (
-                                 <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
-                                    <td className="px-8 py-6 flex items-center gap-3">
-                                       <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
-                                          <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400 capitalize">{res.name?.charAt(0) || res.email?.charAt(0)}</div>
-                                       </div>
-                                       <div>
-                                          <span className="font-extrabold text-slate-900 block">{res.name}</span>
-                                          <span className="text-[10px] font-bold text-slate-400 block">{res.email}</span>
-                                       </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                       <span className="text-xs font-bold text-slate-500">Completed</span>
-                                    </td>
-                                    <td className="px-8 py-6 text-xs font-bold text-slate-400 tabular-nums">
-                                       {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                       <button 
-                                          onClick={() => setSelectedResult(res)} 
-                                          className={`px-3.5 py-1.5 text-xs font-black rounded-lg ring-1 transition-all ${
-                                             res.viewed 
-                                             ? 'bg-slate-50 text-slate-400 ring-slate-100' 
-                                             : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
-                                          }`}
-                                       >
-                                          {res.viewed ? 'View Result' : 'Review Now'}
-                                       </button>
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
+                               {results
+                                 .filter(res => showArchived ? res.isArchived === true : !res.isArchived)
+                                 .map((res) => (
+                                  <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
+                                     <td className="px-8 py-6 flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
+                                           <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400 capitalize">{res.name?.charAt(0) || res.email?.charAt(0)}</div>
+                                        </div>
+                                        <div>
+                                           <span className="font-extrabold text-slate-900 block">{res.name}</span>
+                                           <span className="text-[10px] font-bold text-slate-400 block">{res.email}</span>
+                                        </div>
+                                     </td>
+                                     <td className="px-8 py-6">
+                                        <span className="text-xs font-bold text-slate-500">{res.assessmentId?.split('_')[0] || "Test"}</span>
+                                     </td>
+                                     <td className="px-8 py-6 text-xs font-bold text-slate-400 tabular-nums">
+                                        {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     </td>
+                                     <td className="px-8 py-6 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                           <button 
+                                              onClick={() => setSelectedResult(res)} 
+                                              className={`px-3.5 py-1.5 text-xs font-black rounded-lg ring-1 transition-all ${
+                                                 res.viewed 
+                                                 ? 'bg-slate-50 text-slate-400 ring-slate-100' 
+                                                 : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
+                                              }`}
+                                           >
+                                              {res.viewed ? 'View Result' : 'Review Now'}
+                                           </button>
+                                           
+                                           {!showArchived ? (
+                                              <button 
+                                                 onClick={() => handleArchiveResult(res.id, true)}
+                                                 className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                                                 title="Archive Result"
+                                              >
+                                                 <Archive className="h-4 w-4" />
+                                              </button>
+                                           ) : (
+                                              <button 
+                                                 onClick={() => handleArchiveResult(res.id, false)}
+                                                 className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                 title="Restore Result"
+                                              >
+                                                 <ArchiveRestore className="h-4 w-4" />
+                                              </button>
+                                           )}
+
+                                           <button 
+                                              onClick={() => handleDeleteResult(res.id)}
+                                              className="p-2 text-slate-200 hover:text-red-500 transition-colors"
+                                              title="Delete Result"
+                                           >
+                                              <Trash2 className="h-4 w-4" />
+                                           </button>
+                                        </div>
+                                     </td>
+                                  </tr>
+                               ))}
+                            </tbody>
                         </table>
                      </div>
                   </div>

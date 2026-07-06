@@ -303,18 +303,6 @@ export default function AdminChat() {
 
             {/* Input Bar */}
             <div className="p-6 bg-white border-t border-slate-100 flex items-center gap-3">
-               {selectedChat.isAdminUnread && (
-                 <button 
-                    onClick={async () => {
-                       const chatDocRef = doc(db, "chats", selectedChat.userId);
-                       await updateDoc(chatDocRef, { isAdminUnread: false });
-                       setSelectedChat({...selectedChat, isAdminUnread: false});
-                    }}
-                    className="flex-shrink-0 h-[56px] px-6 bg-emerald-50 text-emerald-600 text-xs font-black uppercase rounded-2xl ring-1 ring-emerald-100 hover:bg-emerald-100 transition active:scale-95 flex items-center gap-2 whitespace-nowrap"
-                 >
-                    <ShieldCheck className="h-4 w-4" /> Resolve Query
-                 </button>
-               )}
                <form onSubmit={handleSendMessage} className="relative flex-1 flex items-center">
                   <input 
                     type="text" 
@@ -330,6 +318,18 @@ export default function AdminChat() {
                     {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </button>
                </form>
+               {selectedChat.isAdminUnread && (
+                 <button 
+                    onClick={async () => {
+                       const chatDocRef = doc(db, "chats", selectedChat.userId);
+                       await updateDoc(chatDocRef, { isAdminUnread: false });
+                       setSelectedChat({...selectedChat, isAdminUnread: false});
+                    }}
+                    className="flex-shrink-0 px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-lg ring-1 ring-emerald-100 hover:bg-emerald-100 transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
+                 >
+                    <ShieldCheck className="h-8 w-3" /> Resolve
+                 </button>
+               )}
             </div>
           </>
         ) : (

@@ -197,7 +197,7 @@ export default function ChatWidget({ user }: { user: any }) {
                     }`}>
                       <p className="font-medium leading-relaxed">{msg.content}</p>
                       <p className={`mt-1 text-[9px] font-bold uppercase tracking-wider ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
-                        {msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        {msg.timestamp ? new Date(typeof msg.timestamp.toDate === 'function' ? msg.timestamp.toDate() : msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."}
                       </p>
                     </div>
                   </div>
