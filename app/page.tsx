@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import Home from "./landing";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import Dashboard from "./dashboard";
+import Onboarding from "@/components/Onboarding";
 import { Loader2, AlertTriangle } from "lucide-react";
 
 export default function Page() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [onboardingNeeded, setOnboardingNeeded] = useState(false);
 
   useEffect(() => {
     // Check if auth is valid (not the placeholder {} from build step)
@@ -20,8 +23,26 @@ export default function Page() {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        // Check Firestore for onboarding status
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists() && userDoc.data().onboardingCompleted) {
+            setOnboardingNeeded(false);
+          } else {
+            setOnboardingNeeded(true);
+          }
+        } catch (err) {
+          console.error("Error fetching user doc:", err);
+          // Fallback to onboarding if we can't check
+          setOnboardingNeeded(true);
+        }
+        setUser(currentUser);
+      } else {
+        setUser(null);
+        setOnboardingNeeded(false);
+      }
       setLoading(false);
     }, (error) => {
       console.error("Auth error:", error);
@@ -72,8 +93,12 @@ export default function Page() {
   }
 
   if (user) {
+    if (onboardingNeeded) {
+      return <Onboarding user={user} onComplete={() => setOnboardingNeeded(false)} />;
+    }
     return <Dashboard user={user} />;
   }
 
   return <Home />;
 }
+

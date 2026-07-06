@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { collection, query, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -9,7 +9,7 @@ import {
   Loader2, ShieldAlert, ArrowLeft, Eye, X, User, Plus, Trash2, 
   CheckCircle2, AlertCircle, Pencil, FileText, LayoutDashboard, 
   Settings, Home, Leaf, ChevronRight, BarChart3, Users, Clock, 
-  Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare
+  Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare, CalendarCheck
 } from "lucide-react";
 import Link from "next/link";
 import AdminChat from "@/components/AdminChat";
@@ -18,7 +18,43 @@ export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<"results" | "tests" | "chat">("tests");
+  const [activeTab, setActiveTab] = useState<"results" | "tests" | "chat" | "users" | "meetings">("tests");
+  const [globalSettings, setGlobalSettings] = useState({ 
+    requireTestForMeeting: false,
+    requiredAssessmentId: "" 
+  });
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+
+  const fetchGlobalSettings = async () => {
+    try {
+      const snap = await getDocs(query(collection(db, "settings")));
+      if (!snap.empty) {
+        setGlobalSettings(snap.docs[0].data() as typeof globalSettings);
+      }
+    } catch (err) {
+      console.error("Error fetching settings", err);
+    }
+  };
+
+  const handleUpdateMeetingSetting = async (updates: Partial<typeof globalSettings>) => {
+    setIsSettingsSaving(true);
+    try {
+      const snap = await getDocs(query(collection(db, "settings")));
+      const newSettings = { ...globalSettings, ...updates };
+      if (!snap.empty) {
+        await updateDoc(doc(db, "settings", snap.docs[0].id), updates);
+      } else {
+        await addDoc(collection(db, "settings"), newSettings);
+      }
+      setGlobalSettings(newSettings);
+      showToast("Meeting settings updated");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to update settings", "error");
+    } finally {
+      setIsSettingsSaving(false);
+    }
+  };
 
   // Results State
   const [results, setResults] = useState<any[]>([]);
@@ -84,6 +120,23 @@ export default function AdminPage() {
     }
   };
 
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const q = query(collection(db, "users"), orderBy("onboardingTimestamp", "desc"));
+      const snap = await getDocs(q);
+      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error("Error fetching users", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
@@ -91,6 +144,8 @@ export default function AdminPage() {
         fetchResults();
         fetchAssessments();
         fetchUnreadMessages();
+        fetchUsers();
+        fetchGlobalSettings();
         setLoading(false);
       } else {
         setAuthorized(false);
@@ -285,7 +340,7 @@ export default function AdminPage() {
                className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'tests' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
             >
                <FileText className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'tests' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-               My tests
+               Create tests
             </button>
             <button 
                onClick={() => { setActiveTab("results"); resetEditor(); }}
@@ -302,6 +357,13 @@ export default function AdminPage() {
                )}
             </button>
             <button 
+               onClick={() => { setActiveTab("users"); resetEditor(); }}
+               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'users' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+            >
+               <Users className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'users' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+               User Info
+            </button>
+            <button 
                onClick={() => { setActiveTab("chat"); resetEditor(); }}
                className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
             >
@@ -315,6 +377,15 @@ export default function AdminPage() {
                   </span>
                )}
             </button>
+            {process.env.NEXT_PUBLIC_FEATURE_BOOK_APPOINTMENT_ENABLE === "true" && (
+              <button 
+                onClick={() => { setActiveTab("meetings"); resetEditor(); }}
+                className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'meetings' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+              >
+                <CalendarCheck className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'meetings' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                Meetings
+              </button>
+            )}
          
             
          </nav>
@@ -332,8 +403,10 @@ export default function AdminPage() {
          <div className="p-6 pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between">
                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-slate-100 overflow-hidden ring-2 ring-slate-50">
-                     {auth.currentUser?.photoURL ? <img src={auth.currentUser.photoURL} alt="" /> : <div className="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">A</div>}
+                  <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center ring-2 ring-slate-50">
+                     <div className="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">
+                        {auth.currentUser?.displayName?.charAt(0) || auth.currentUser?.email?.charAt(0) || "A"}
+                     </div>
                   </div>
                   <div>
                      <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{auth.currentUser?.displayName || "Admin"}</p>
@@ -438,6 +511,159 @@ export default function AdminPage() {
                </div>
             )}
 
+            {activeTab === "meetings" && (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">
+                   <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                      <div>
+                         <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">Meeting Access Control</h1>
+                         <p className="mt-1 text-xs font-bold text-slate-400">Configure how and when users can schedule sessions.</p>
+                      </div>
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                         {globalSettings.requireTestForMeeting && (
+                            <div className="flex flex-col gap-1 pr-6 border-r border-slate-100">
+                               <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Bind to Assessment</label>
+                               <select 
+                                  value={globalSettings.requiredAssessmentId}
+                                  onChange={(e) => handleUpdateMeetingSetting({ requiredAssessmentId: e.target.value })}
+                                  className="text-xs font-bold text-slate-700 bg-slate-50 border-none rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-100 outline-none min-w-[200px]"
+                               >
+                                  <option value="">Any Assessment</option>
+                                  {assessments.map(a => (
+                                     <option key={a.id} value={a.id}>{a.title}</option>
+                                  ))}
+                               </select>
+                            </div>
+                         )}
+                         <div className="flex items-center gap-4 pl-2">
+                            <div className="flex flex-col">
+                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Requirement</span>
+                               <span className="text-xs font-bold text-slate-700">{globalSettings.requireTestForMeeting ? 'Assessment Required' : 'Open Access'}</span>
+                            </div>
+                            <button 
+                               onClick={() => handleUpdateMeetingSetting({ requireTestForMeeting: !globalSettings.requireTestForMeeting })}
+                               disabled={isSettingsSaving}
+                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${globalSettings.requireTestForMeeting ? 'bg-[#7C3AED]' : 'bg-slate-200'}`}
+                            >
+                               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${globalSettings.requireTestForMeeting ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="flex-1 bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden min-h-[750px] mb-12 flex flex-col relative group">
+                      <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#7C3AED] opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+                      <iframe 
+                         src={process.env.NEXT_PUBLIC_KOALENDAR_URL}
+                         className="w-full h-full border-none flex-1"
+                         style={{ minHeight: '750px' }}
+                         title="Meetings Dashboard"
+                      />
+                   </div>
+                </div>
+            )}
+
+            {activeTab === "users" && (
+               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="mb-6">
+                     <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">User Directory</h1>
+                     <p className="mt-1 text-sm font-bold text-slate-400">Directory of all users who have completed the onboarding flow.</p>
+                  </div>
+
+                  <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+                     {usersLoading ? (
+                        <div className="p-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-indigo-500" /></div>
+                     ) : users.length === 0 ? (
+                        <div className="p-24 text-center">
+                           <p className="text-slate-400 font-bold mb-4">No users found</p>
+                        </div>
+                     ) : (
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left">
+                              <thead>
+                                 <tr className="border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
+                                    <th className="px-8 py-5">User Profile</th>
+                                    <th className="px-8 py-5">Age & Occupation</th>
+                                    <th className="px-8 py-5">Joined</th>
+                                    <th className="px-8 py-5 text-right">Action</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                 {users.map((u) => (
+                                    <React.Fragment key={u.id}>
+                                       <tr className={`group transition-all hover:bg-slate-50/50 ${expandedUser === u.id ? 'bg-slate-50/80' : ''}`}>
+                                          <td className="px-8 py-6">
+                                             <div className="flex items-center gap-3">
+                                                <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center font-black text-xs ring-2 ring-white">
+                                                   {u.name?.charAt(0) || u.email?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                   <span className="font-extrabold text-slate-900 block">{u.name || "N/A"}</span>
+                                                   <span className="text-[10px] font-bold text-slate-400 block">{u.email}</span>
+                                                </div>
+                                             </div>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                             <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-bold text-slate-700">{u.occupation || "N/A"}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">{u.age ? `${u.age} years old` : "No age info"}</span>
+                                             </div>
+                                          </td>
+                                          <td className="px-8 py-6 text-xs font-bold text-slate-400 tabular-nums">
+                                             {u.onboardingTimestamp ? new Date(u.onboardingTimestamp.seconds * 1000).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : "N/A"}
+                                          </td>
+                                          <td className="px-8 py-6 text-right">
+                                             <button 
+                                                onClick={() => setExpandedUser(expandedUser === u.id ? null : u.id)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${expandedUser === u.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+                                             >
+                                                {expandedUser === u.id ? 'Hide Details' : 'View Details'}
+                                             </button>
+                                          </td>
+                                       </tr>
+                                       {expandedUser === u.id && (
+                                          <tr>
+                                             <td colSpan={4} className="px-8 py-8 bg-slate-50/50 border-y border-slate-100">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-2 duration-300">
+                                                   <div className="space-y-4">
+                                                      <div>
+                                                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Occupation Detail</p>
+                                                         <p className="text-sm font-bold text-slate-700 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">{u.occupation || "Not specified"}</p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">User Metadata</p>
+                                                         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-2">
+                                                            <div className="flex justify-between text-xs">
+                                                               <span className="text-slate-400 font-bold">User ID:</span>
+                                                               <span className="text-slate-600 font-mono text-[10px]">{u.uid}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                               <span className="text-slate-400 font-bold">Last Active:</span>
+                                                               <span className="text-slate-600 font-bold">{u.lastActive ? new Date(u.lastActive.seconds * 1000).toLocaleString() : "N/A"}</span>
+                                                            </div>
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                   <div>
+                                                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Counseling Background & Needs</p>
+                                                      <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm h-full">
+                                                         <p className="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap italic">
+                                                            {u.counselingDetails ? `"${u.counselingDetails}"` : "No additional counseling details provided during onboarding."}
+                                                         </p>
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                             </td>
+                                          </tr>
+                                       )}
+                                    </React.Fragment>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            )}
             {activeTab === "results" && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   <div className="mb-6">
@@ -461,7 +687,7 @@ export default function AdminPage() {
                                  <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
                                     <td className="px-8 py-6 flex items-center gap-3">
                                        <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
-                                          {res.photoURL ? <img src={res.photoURL} alt="" /> : <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400">{res.name?.charAt(0)}</div>}
+                                          <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400 capitalize">{res.name?.charAt(0) || res.email?.charAt(0)}</div>
                                        </div>
                                        <div>
                                           <span className="font-extrabold text-slate-900 block">{res.name}</span>

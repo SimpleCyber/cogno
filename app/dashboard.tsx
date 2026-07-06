@@ -1,8 +1,9 @@
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, where, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
-import { BookOpen, LogOut, FileText, ArrowRight, Leaf, User, ShieldCheck, Loader2, X, MessageSquare, Clock, Send } from "lucide-react";
+import { BookOpen, LogOut, FileText, ArrowRight, Leaf, User, ShieldCheck, Loader2, X, MessageSquare, Clock, Send, AlertCircle, CalendarCheck, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import Script from "next/script";
 import { useState, useRef, useEffect } from "react";
 import ChatWidget from "@/components/ChatWidget";
 
@@ -21,6 +22,12 @@ export default function Dashboard({ user }: { user: any }) {
   const [requestedPopup, setRequestedPopup] = useState<string | null>(null); // courseId
   const [retestNote, setRetestNote] = useState("");
   const [isRequestingRetest, setIsRequestingRetest] = useState(false);
+  const [showScheduleLock, setShowScheduleLock] = useState(false);
+  
+  const [globalSettings, setGlobalSettings] = useState({ 
+    requireTestForMeeting: false,
+    requiredAssessmentId: "" 
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -30,7 +37,6 @@ export default function Dashboard({ user }: { user: any }) {
     }
     document.addEventListener("mousedown", handleClickOutside);
 
-     // Fetch Dynamic Assessments
      const fetchAssessments = async () => {
        try {
          const q = query(collection(db, "assessments"), orderBy("createdAt", "desc"));
@@ -73,18 +79,27 @@ export default function Dashboard({ user }: { user: any }) {
         }
       };
 
+      const fetchGlobalSettings = async () => {
+        try {
+          const snap = await getDocs(query(collection(db, "settings")));
+          if (!snap.empty) {
+            setGlobalSettings(snap.docs[0].data() as typeof globalSettings);
+          }
+        } catch (err) {
+          console.error("Error fetching settings", err);
+        }
+      };
+
       const loadData = async () => {
          setLoading(true);
-         await Promise.all([fetchAssessments(), fetchUserResults(), fetchUserRetests()]);
+         await Promise.all([fetchAssessments(), fetchUserResults(), fetchUserRetests(), fetchGlobalSettings()]);
          setLoading(false);
       };
 
      loadData();
-
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [user]);
 
-  // ── Retest Request Handler ──
   const handleRetestRequest = async (courseId: string, courseTitle: string) => {
     if (!user || !retestNote.trim()) return;
     setIsRequestingRetest(true);
@@ -101,7 +116,6 @@ export default function Dashboard({ user }: { user: any }) {
         timestamp: Date.now(),
       });
 
-      // Send as a chat message to admin
       await addDoc(collection(db, "chats", user.uid, "messages"), {
         senderId: user.uid,
         content: `[SYSTEM REQUEST] Retest request for "${courseTitle}": ${retestNote}`,
@@ -110,7 +124,6 @@ export default function Dashboard({ user }: { user: any }) {
         isSystem: true,
       });
 
-      // Ensure chat doc exists & flag admin unread
       try {
         await updateDoc(doc(db, "chats", user.uid), {
           lastMessage: "Requested a test retake",
@@ -118,11 +131,8 @@ export default function Dashboard({ user }: { user: any }) {
           isAdminUnread: true,
           updatedAt: serverTimestamp(),
         });
-      } catch {
-        // Chat doc might not exist yet — handled by ChatWidget on first message
-      }
+      } catch (e) {}
 
-      // Update local state so card updates immediately
       setUserRetests((prev) => [
         ...prev,
         { assessmentId: courseId, status: "pending", note: retestNote, consumed: false },
@@ -136,7 +146,6 @@ export default function Dashboard({ user }: { user: any }) {
     }
   };
 
-  // ── Derive card state ──
   const getCardState = (courseId: string) => {
     const results = userResults.filter((r) => r.assessmentId === courseId);
     const hasTaken = results.length > 0;
@@ -150,6 +159,23 @@ export default function Dashboard({ user }: { user: any }) {
     const isDenied = latestRetest?.status === "denied";
 
     return { hasTaken, hasFeedback, isPending, isApproved, isDenied, results };
+  };
+
+  const handleOpenScheduler = () => {
+    const isRestricted = globalSettings.requireTestForMeeting && (
+      globalSettings.requiredAssessmentId 
+      ? !userResults.some(r => r.assessmentId === globalSettings.requiredAssessmentId)
+      : userResults.length === 0
+    );
+
+    if (isRestricted) {
+      setShowScheduleLock(true);
+      return;
+    }
+
+    (window as any).Koalendar?.('open', { 
+      url: process.env.NEXT_PUBLIC_KOALENDAR_URL || "https://koalendar.com/e/meet-with-satyam-yadav" 
+    });
   };
 
   return (
@@ -172,8 +198,18 @@ export default function Dashboard({ user }: { user: any }) {
             </span>
           </div>
           
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm font-semibold text-slate-600 sm:block">
+          <div className="flex items-center gap-6">
+            {process.env.NEXT_PUBLIC_FEATURE_BOOK_APPOINTMENT_ENABLE === "true" && (
+              <button
+                onClick={handleOpenScheduler}
+                className="group flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-lg transition hover:bg-slate-800 hover:shadow-indigo-100"
+              >
+                <CalendarCheck className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition" />
+                Book Appointment
+              </button>
+            )}
+
+            <span className="hidden text-sm font-semibold text-slate-600 sm:block h-5 border-l border-slate-200 pl-6">
               Hi, {user?.displayName || user?.email?.split("@")[0]}
             </span>
             <div className="relative" ref={dropdownRef}>
@@ -181,13 +217,9 @@ export default function Dashboard({ user }: { user: any }) {
                 onClick={() => setIsProfileOpen((prev) => !prev)}
                 className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-[#4F46E5] outline-none ring-2 ring-transparent transition-all hover:bg-indigo-200 focus:ring-indigo-300"
               >
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-sm font-bold">
-                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
-                  </span>
-                )}
+                <span className="text-sm font-bold uppercase">
+                  {user?.displayName ? user.displayName.charAt(0) : user?.email?.charAt(0) || "U"}
+                </span>
               </button>
 
               {isProfileOpen && (
@@ -226,7 +258,7 @@ export default function Dashboard({ user }: { user: any }) {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-        <div className="mb-10">
+        <div className="mb-10 text-center lg:text-left">
           <h1 className="font-display text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight">
             Learning & Assessments
           </h1>
@@ -281,7 +313,6 @@ export default function Dashboard({ user }: { user: any }) {
                         {course.description || "No description provided."}
                       </p>
 
-                      {/* Status Messages */}
                       {state.hasTaken && (
                         <div className="mt-6">
                           {state.isApproved ? (
@@ -319,7 +350,6 @@ export default function Dashboard({ user }: { user: any }) {
                       )}
                     </div>
 
-                    {/* Card Footer */}
                     <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
                       <span className="text-xs font-bold uppercase tracking-widest text-[#8B5CF6]">
                         {course.duration || "Self Paced"}
@@ -363,6 +393,42 @@ export default function Dashboard({ user }: { user: any }) {
            </div>
         )}
       </main>
+
+      {/* ═══════════ SCHEDULING LOCK POPUP ═══════════ */}
+      {showScheduleLock && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowScheduleLock(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-[28px] shadow-2xl p-10 animate-in fade-in zoom-in-95 duration-300 text-center">
+            <div className="mx-auto h-20 w-20 bg-amber-50 rounded-3xl flex items-center justify-center mb-6">
+              <ShieldAlert className="h-10 w-10 text-amber-500" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Access Restricted</h3>
+            <p className="mt-4 text-sm font-medium text-slate-500 leading-relaxed">
+              {(() => {
+                const reqTestName = globalSettings.requiredAssessmentId 
+                  ? (courses.find(c => c.id === globalSettings.requiredAssessmentId)?.title || "the specified test")
+                  : "at least one assessment";
+                return `Please complete "${reqTestName}" first. Only after finishing this assessment will you be able to proceed with scheduling your 1-on-1 meeting.`;
+              })()}
+            </p>
+            <button
+              onClick={() => {
+                const reqId = globalSettings.requiredAssessmentId;
+                if (reqId) {
+                  window.location.href = `/test/${reqId}`;
+                } else {
+                  setShowScheduleLock(false);
+                  window.scrollTo({ top: 400, behavior: "smooth" });
+                }
+              }}
+              className="mt-8 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition shadow-xl flex items-center justify-center gap-2 group"
+            >
+              <FileText className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition" />
+              {globalSettings.requiredAssessmentId ? "Start Required Assessment" : "View All Assessments"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════ RETEST REQUEST POPUP ═══════════ */}
       {retestPopup && (
@@ -483,7 +549,7 @@ export default function Dashboard({ user }: { user: any }) {
               <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 mb-4">
                 <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Your Message</p>
                 <p className="text-sm font-medium text-amber-900 leading-relaxed">
-                  "{retest?.note || "Retest requested"}"
+                  {retest?.note || "Retest requested"}
                 </p>
               </div>
 
@@ -503,6 +569,15 @@ export default function Dashboard({ user }: { user: any }) {
           </div>
         );
       })()}
+
+      {/* Koalendar Widget Initialization */}
+      <Script id="koalendar-config" strategy="afterInteractive">
+         {`window.Koalendar=window.Koalendar||function(){(Koalendar.props=Koalendar.props||[]).push(arguments)};`}
+      </Script>
+      <Script 
+         src="https://koalendar.com/assets/widget.js" 
+         strategy="afterInteractive"
+      />
 
       <ChatWidget user={user} />
     </div>

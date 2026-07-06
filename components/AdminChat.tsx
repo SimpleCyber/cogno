@@ -223,22 +223,10 @@ export default function AdminChat() {
                 </div>
               </div>
                <div className="flex items-center gap-3">
-                  {selectedChat.isAdminUnread && (
-                    <button 
-                       onClick={async () => {
-                          const chatDocRef = doc(db, "chats", selectedChat.userId);
-                          await updateDoc(chatDocRef, { isAdminUnread: false });
-                          setSelectedChat({...selectedChat, isAdminUnread: false});
-                       }}
-                       className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-lg ring-1 ring-emerald-100 hover:bg-emerald-100 transition active:scale-95 flex items-center gap-2"
-                    >
-                       <ShieldCheck className="h-3 w-3" /> Query Resolved
-                    </button>
-                  )}
-                  <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Clock className="h-5 w-5" /></button>
-                  <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Filter className="h-5 w-5" /></button>
-               </div>
-            </div>
+                   <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Clock className="h-5 w-5" /></button>
+                   <button className="p-2 text-slate-400 hover:text-slate-600 transition"><Filter className="h-5 w-5" /></button>
+                </div>
+             </div>
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -314,8 +302,20 @@ export default function AdminChat() {
             </div>
 
             {/* Input Bar */}
-            <div className="p-6 bg-white border-t border-slate-100">
-               <form onSubmit={handleSendMessage} className="relative flex items-center">
+            <div className="p-6 bg-white border-t border-slate-100 flex items-center gap-3">
+               {selectedChat.isAdminUnread && (
+                 <button 
+                    onClick={async () => {
+                       const chatDocRef = doc(db, "chats", selectedChat.userId);
+                       await updateDoc(chatDocRef, { isAdminUnread: false });
+                       setSelectedChat({...selectedChat, isAdminUnread: false});
+                    }}
+                    className="flex-shrink-0 h-[56px] px-6 bg-emerald-50 text-emerald-600 text-xs font-black uppercase rounded-2xl ring-1 ring-emerald-100 hover:bg-emerald-100 transition active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                 >
+                    <ShieldCheck className="h-4 w-4" /> Resolve Query
+                 </button>
+               )}
+               <form onSubmit={handleSendMessage} className="relative flex-1 flex items-center">
                   <input 
                     type="text" 
                     value={input}
