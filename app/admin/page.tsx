@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertCircle, Pencil, FileText, LayoutDashboard, 
   Settings, Home, Leaf, ChevronRight, BarChart3, Users, Clock, 
   Share2, MoreVertical, Search, Filter, Radio, Check, MessageSquare, CalendarCheck,
-  Archive, FolderArchive, ArchiveRestore, RotateCcw
+  Archive, FolderArchive, ArchiveRestore, RotateCcw, Menu
 } from "lucide-react";
 import Link from "next/link";
 import AdminChat from "@/components/AdminChat";
@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showArchivedTests, setShowArchivedTests] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const fetchGlobalSettings = async () => {
     try {
@@ -66,6 +67,7 @@ export default function AdminPage() {
   const [newResultsCount, setNewResultsCount] = useState(0);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Tests State
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -133,6 +135,15 @@ export default function AdminPage() {
     } catch (err) {
       console.error(err);
       showToast("Action failed", "error");
+    }
+  };
+
+  const markAsViewed = async (id: string) => {
+    try {
+      await updateDoc(doc(db, "test_results", id), { viewed: true });
+      fetchResults();
+    } catch (err) {
+      console.error("Error marking as viewed", err);
     }
   };
 
@@ -363,101 +374,127 @@ export default function AdminPage() {
         </div>
       )}
       
-      {/* SIDEBAR */}
-      <aside className="w-[280px] shrink-0 border-r border-slate-200 bg-white flex flex-col sticky top-0 h-screen">
-         <div className="p-8 pb-10 flex items-center gap-3">
-            <div className="h-9 w-9 bg-[#A855F7] rounded-[10px] flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-               <CheckCircle2 className="h-5 w-5 stroke-[2.5px]" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">Cogno Test</span>
-         </div>
+       {/* MOBILE OVERLAY */}
+       {isMobileSidebarOpen && (
+          <div 
+             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] lg:hidden animate-in fade-in duration-300"
+             onClick={() => setIsMobileSidebarOpen(false)}
+          />
+       )}
 
-         <nav className="flex-1 px-4 space-y-1.5">
-            <button 
-               onClick={() => { setActiveTab("tests"); resetEditor(); }}
-               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'tests' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-            >
-               <FileText className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'tests' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-               Create tests
-            </button>
-            <button 
-               onClick={() => { setActiveTab("results"); resetEditor(); }}
-               className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'results' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-            >
-               <div className="flex items-center gap-3.5">
-                  <BarChart3 className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'results' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-                  Results
-               </div>
-               {newResultsCount > 0 && (
-                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                     {newResultsCount}
-                  </span>
-               )}
-            </button>
-            <button 
-               onClick={() => { setActiveTab("users"); resetEditor(); }}
-               className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'users' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-            >
-               <Users className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'users' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-               User Info
-            </button>
-            <button 
-               onClick={() => { setActiveTab("chat"); resetEditor(); }}
-               className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-            >
-               <div className="flex items-center gap-3.5">
-                  <MessageSquare className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'chat' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-                  Messages
-               </div>
-               {unreadMessages > 0 && (
-                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                     {unreadMessages}
-                  </span>
-               )}
-            </button>
-            {process.env.NEXT_PUBLIC_FEATURE_BOOK_APPOINTMENT_ENABLE === "true" && (
-              <button 
-                onClick={() => { setActiveTab("meetings"); resetEditor(); }}
-                className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'meetings' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
-              >
-                <CalendarCheck className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'meetings' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
-                Meetings
-              </button>
-            )}
-         
-            
-         </nav>
+       {/* SIDEBAR */}
+       <aside className={`
+          fixed inset-y-0 left-0 bg-white border-r border-slate-100 flex flex-col z-[120] transition-transform duration-300 lg:relative lg:translate-x-0 lg:z-0
+          w-[280px] ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+       `}>
+          <div className="p-8 pb-4">
+             <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] text-white">
+                   <Leaf className="h-5 w-5" />
+                </span>
+                <span className="text-xl font-black text-slate-900 tracking-tight">Cogno Admin</span>
+             </div>
+          </div>
 
-         <div className="mt-auto space-y-1">
-            
-            <button className="flex w-full items-center gap-3.5 rounded-xl px-4 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-black transition-all group">
-               <Link href="/" className="flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-black transition-all group">
-               <Home className="h-5 w-5 stroke-[2.2px] text-slate-400 group-hover:text-black" />
-               Tests catalog
-            </Link>
-            </button>
-         </div>
+          <nav className="flex-1 space-y-1.5 p-6 mt-4">
+             <button 
+                onClick={() => { setActiveTab("tests"); resetEditor(); setIsMobileSidebarOpen(false); }}
+                className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'tests' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+             >
+                <FileText className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'tests' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                Create tests
+             </button>
+             <button 
+                onClick={() => { setActiveTab("results"); resetEditor(); setIsMobileSidebarOpen(false); }}
+                className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'results' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+             >
+                <div className="flex items-center gap-3.5">
+                   <BarChart3 className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'results' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                   Results
+                </div>
+                {newResultsCount > 0 && (
+                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {newResultsCount}
+                   </span>
+                )}
+             </button>
+             <button 
+                onClick={() => { setActiveTab("users"); resetEditor(); setIsMobileSidebarOpen(false); }}
+                className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'users' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+             >
+                <Users className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'users' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                User Info
+             </button>
+             <button 
+                onClick={() => { setActiveTab("chat"); resetEditor(); setIsMobileSidebarOpen(false); }}
+                className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'chat' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+             >
+                <div className="flex items-center gap-3.5">
+                   <MessageSquare className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'chat' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                   Messages
+                </div>
+                {unreadMessages > 0 && (
+                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {unreadMessages}
+                   </span>
+                )}
+             </button>
+             {process.env.NEXT_PUBLIC_FEATURE_BOOK_APPOINTMENT_ENABLE === "true" && (
+               <button 
+                 onClick={() => { setActiveTab("meetings"); resetEditor(); setIsMobileSidebarOpen(false); }}
+                 className={`flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all group ${activeTab === 'meetings' ? 'bg-[#F3F4F6] text-black' : 'text-slate-500 hover:bg-slate-50 hover:text-black'}`}
+               >
+                 <CalendarCheck className={`h-5 w-5 stroke-[2.2px] ${activeTab === 'meetings' ? 'text-black' : 'text-slate-400 group-hover:text-black'}`} />
+                 Meetings
+               </button>
+             )}
+          
+             
+          </nav>
 
-         <div className="p-6 pt-4 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-               <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center ring-2 ring-slate-50">
-                     <div className="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">
-                        {auth.currentUser?.displayName?.charAt(0) || auth.currentUser?.email?.charAt(0) || "A"}
-                     </div>
-                  </div>
-                  <div>
-                     <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{auth.currentUser?.displayName || "Admin"}</p>
-                  </div>
-               </div>
-               <button className="p-2 text-slate-400 hover:text-black transition"><MoreVertical className="h-4 w-4" /></button>
-            </div>
-         </div>
-      </aside>
+          <div className="mt-auto space-y-1">
+             
+             <button className="flex w-full items-center gap-3.5 rounded-xl px-4 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-black transition-all group">
+                <Link href="/" className="flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-black transition-all group">
+                <Home className="h-5 w-5 stroke-[2.2px] text-slate-400 group-hover:text-black" />
+                Tests catalog
+             </Link>
+             </button>
+          </div>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 overflow-y-auto">
-         <div className="mx-auto max-w-[1200px] p-6 lg:p-8">
+          <div className="p-6 pt-4 border-t border-slate-100">
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                   <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center ring-2 ring-slate-50">
+                      <div className="h-full w-full flex items-center justify-center text-xs font-bold text-slate-400">
+                         {auth.currentUser?.displayName?.charAt(0) || auth.currentUser?.email?.charAt(0) || "A"}
+                      </div>
+                   </div>
+                   <div>
+                      <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{auth.currentUser?.displayName || "Admin"}</p>
+                   </div>
+                </div>
+                <button className="p-2 text-slate-400 hover:text-black transition"><MoreVertical className="h-4 w-4" /></button>
+             </div>
+          </div>
+       </aside>
+
+       {/* MAIN CONTENT */}
+       <main className="flex-1 overflow-y-auto min-w-0">
+          {/* MOBILE HEADER */}
+          <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100 shrink-0 sticky top-0 z-[100]">
+             <div className="flex items-center gap-3">
+                <button 
+                   onClick={() => setIsMobileSidebarOpen(true)}
+                   className="p-2 -ml-2 rounded-lg hover:bg-slate-50 text-slate-500"
+                >
+                   <Menu className="h-6 w-6" />
+                </button>
+                <span className="font-black text-slate-900 tracking-tight">Admin</span>
+             </div>
+             <Link href="/" className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Exit</Link>
+          </div>
+         <div className="mx-auto max-w-[1200px] p-4 md:p-8 lg:p-10 mb-20 md:mb-0">
 
             {activeTab === "chat" && !isEditing && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -476,27 +513,23 @@ export default function AdminPage() {
                         <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
                            {showArchivedTests ? "Archived Tests" : "Tests Overview"}
                         </h1>
-                        <div className="mt-2 flex items-center gap-4">
-                           <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-md flex items-center gap-1.5 ring-1 ${showArchivedTests ? 'bg-amber-50 text-amber-600 ring-amber-100' : 'bg-[#D1FAE5] text-[#059669] ring-emerald-200'}`}>
-                              <Radio className="h-3 w-3" /> {showArchivedTests ? "Archived" : "Published"}
-                           </span>
-                           <span className="text-xs font-bold text-slate-400">Items count: {assessments.filter(a => showArchivedTests ? a.status === 'archived' : a.status !== 'archived').length}</span>
-                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Assessments</h2>
+                        <p className="mt-2 text-sm font-medium text-slate-400">Manage and coordinate with the student evaluations.</p>
                      </div>
                      <div className="flex items-center gap-3">
                         <button 
                            onClick={() => setShowArchivedTests(!showArchivedTests)}
-                           className={`px-6 py-3.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition transform active:scale-95 flex items-center gap-2 ${
-                              showArchivedTests 
-                              ? "bg-[#8B5CF6] text-white" 
-                              : "bg-white text-[#8B5CF6] border border-slate-100"
-                           }`}
+                           className={`flex-1 md:flex-none h-11 px-6 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200 transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2 ${showArchivedTests ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600'}`}
                         >
                            {showArchivedTests ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                           {showArchivedTests ? "Active Tests" : "View Archive"}
+                           {showArchivedTests ? "Back to Active" : "View Archive"}
                         </button>
-                        <button onClick={openNewEditor} className="px-6 py-3.5 bg-white text-[#8B5CF6] rounded-xl text-sm font-bold border border-slate-100 shadow-lg shadow-indigo-100 hover:bg-slate-50 transition transform active:scale-95 flex items-center gap-2">
-                           <Pencil className="h-4 w-4" /> Create test
+                        <button 
+                           onClick={() => { setIsEditing(true); resetEditor(); }}
+                           className="flex-1 md:flex-none h-11 px-6 bg-white text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+                        >
+                           <Pencil className="h-4 w-4" />
+                           Create Test
                         </button>
                      </div>
                   </div>
@@ -584,60 +617,55 @@ export default function AdminPage() {
             )}
 
             {activeTab === "meetings" && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">
-                   <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                      <div>
-                         <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">Meeting Access Control</h1>
-                         <p className="mt-1 text-xs font-bold text-slate-400">Configure how and when users can schedule sessions.</p>
-                      </div>
-                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-                         {globalSettings.requireTestForMeeting && (
-                            <div className="flex flex-col gap-1 pr-6 border-r border-slate-100">
-                               <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Bind to Assessment</label>
-                               <select 
-                                  value={globalSettings.requiredAssessmentId}
-                                  onChange={(e) => handleUpdateMeetingSetting({ requiredAssessmentId: e.target.value })}
-                                  className="text-xs font-bold text-slate-700 bg-slate-50 border-none rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-100 outline-none min-w-[200px]"
-                               >
-                                  <option value="">Any Assessment</option>
-                                  {assessments.map(a => (
-                                     <option key={a.id} value={a.id}>{a.title}</option>
-                                  ))}
-                               </select>
-                            </div>
-                         )}
-                         <div className="flex items-center gap-4 pl-2">
-                            <div className="flex flex-col">
-                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Requirement</span>
-                               <span className="text-xs font-bold text-slate-700">{globalSettings.requireTestForMeeting ? 'Assessment Required' : 'Open Access'}</span>
-                            </div>
-                            <button 
-                               onClick={() => handleUpdateMeetingSetting({ requireTestForMeeting: !globalSettings.requireTestForMeeting })}
-                               disabled={isSettingsSaving}
-                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${globalSettings.requireTestForMeeting ? 'bg-[#7C3AED]' : 'bg-slate-200'}`}
-                            >
-                               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${globalSettings.requireTestForMeeting ? 'translate-x-6' : 'translate-x-1'}`} />
-                            </button>
-                         </div>
-                      </div>
-                   </div>
+                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col pt-4 md:pt-0">
+                    <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm">
+                       <div>
+                          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">Meetings</h1>
+                          <p className="mt-1 text-xs font-bold text-slate-400">Configure scheduling access for your students.</p>
+                       </div>
+                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                          {globalSettings.requireTestForMeeting && (
+                             <div className="flex flex-col gap-1 pr-0 md:pr-6 border-r-0 md:border-r border-slate-100">
+                                <label className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Linked Test</label>
+                                <select 
+                                   value={globalSettings.requiredAssessmentId}
+                                   onChange={(e) => handleUpdateMeetingSetting({ requiredAssessmentId: e.target.value })}
+                                   className="bg-slate-50 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none border border-transparent focus:border-indigo-100 focus:bg-white transition"
+                                >
+                                   <option value="">Any Assessment</option>
+                                   {assessments.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+                                </select>
+                             </div>
+                          )}
+                          <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3 rounded-2xl">
+                             <span className="text-xs font-bold text-slate-600">Strict mode</span>
+                             <button 
+                                onClick={() => handleUpdateMeetingSetting({ requireTestForMeeting: !globalSettings.requireTestForMeeting })}
+                                disabled={isSettingsSaving}
+                                className={`relative h-6 w-11 rounded-full transition-colors ${globalSettings.requireTestForMeeting ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                             >
+                                <div className={`absolute top-1 left-1 h-4 w-4 bg-white rounded-full transition-transform ${globalSettings.requireTestForMeeting ? 'translate-x-5' : ''}`} />
+                             </button>
+                          </div>
+                       </div>
+                    </div>
 
-                   <div className="flex-1 bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden min-h-[750px] mb-12 flex flex-col relative group">
-                      <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#7C3AED] opacity-0 group-hover:opacity-100 transition-opacity z-10" />
-                      <iframe 
-                         src={process.env.NEXT_PUBLIC_KOALENDAR_URL}
-                         className="w-full h-full border-none flex-1"
-                         style={{ minHeight: '750px' }}
-                         title="Meetings Dashboard"
-                      />
-                   </div>
-                </div>
-            )}
+                    <div className="flex-1 bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden min-h-[750px] mb-12 flex flex-col relative group">
+                       <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#4F46E5] opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+                       <iframe 
+                          src={process.env.NEXT_PUBLIC_KOALENDAR_URL}
+                          className="w-full h-full border-none flex-1"
+                          style={{ minHeight: '750px' }}
+                          title="Meetings Dashboard"
+                       />
+                    </div>
+                 </div>
+             )}
 
             {activeTab === "users" && (
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   <div className="mb-6">
-                     <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">User Directory</h1>
+                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">User Directory</h1>
                      <p className="mt-1 text-sm font-bold text-slate-400">Directory of all users who have completed the onboarding flow.</p>
                   </div>
 
@@ -736,106 +764,117 @@ export default function AdminPage() {
                   </div>
                </div>
             )}
-             {activeTab === "results" && (
-               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="mb-6 flex items-end justify-between">
+            {activeTab === "results" && (
+               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="mb-8 md:mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                      <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                           {showArchived ? "Archived Results" : "Results Inbox"}
-                        </h1>
-                        <p className="mt-1 text-sm font-bold text-slate-400">
-                           {showArchived ? "Viewing archived psychological evaluations." : "Review detailed performance for all dynamic tests."}
-                        </p>
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">Results Inbox</h2>
+                        <p className="mt-2 text-sm font-medium text-slate-400">Review and provide feedback on student evaluations.</p>
                      </div>
-                     <button 
-                        onClick={() => setShowArchived(!showArchived)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                           showArchived 
-                           ? "bg-slate-900 text-white shadow-slate-200" 
-                           : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50"
-                        }`}
-                     >
-                        {showArchived ? <FolderArchive className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                        {showArchived ? "Show Active" : "View Archive"}
-                     </button>
+                     <div className="flex items-center gap-3">
+                        <div className="relative group">
+                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-600 transition" />
+                           <input 
+                              type="text" 
+                              placeholder="Search results..."
+                              className="h-11 pl-11 pr-4 rounded-xl bg-white border border-slate-200 text-sm font-medium outline-none transition-all focus:ring-4 focus:ring-indigo-100 w-full md:w-auto"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                           />
+                        </div>
+                        <button 
+                           onClick={() => setShowArchived(!showArchived)}
+                           className={`h-11 px-6 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2 border ${showArchived ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                        >
+                           {showArchived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                           {showArchived ? "Inbox" : "Archive"}
+                        </button>
+                     </div>
                   </div>
 
-                  <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                           <thead>
-                               <tr className="border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
-                                  <th className="px-8 py-5">Name & Contact</th>
-                                  <th className="px-8 py-5">Status</th>
-                                  <th className="px-8 py-5">Completed</th>
-                                  <th className="px-8 py-5 text-right">Action</th>
-                               </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-50">
-                               {results
-                                 .filter(res => showArchived ? res.isArchived === true : !res.isArchived)
-                                 .map((res) => (
-                                  <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
-                                     <td className="px-8 py-6 flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white">
-                                           <div className="h-full w-full flex items-center justify-center text-[10px] font-black text-slate-400 capitalize">{res.name?.charAt(0) || res.email?.charAt(0)}</div>
-                                        </div>
-                                        <div>
-                                           <span className="font-extrabold text-slate-900 block">{res.name}</span>
-                                           <span className="text-[10px] font-bold text-slate-400 block">{res.email}</span>
-                                        </div>
-                                     </td>
-                                     <td className="px-8 py-6">
-                                        <span className="text-xs font-bold text-slate-500">{res.assessmentId?.split('_')[0] || "Test"}</span>
-                                     </td>
-                                     <td className="px-8 py-6 text-xs font-bold text-slate-400 tabular-nums">
-                                        {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                     </td>
-                                     <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                           <button 
-                                              onClick={() => setSelectedResult(res)} 
-                                              className={`px-3.5 py-1.5 text-xs font-black rounded-lg ring-1 transition-all ${
-                                                 res.viewed 
-                                                 ? 'bg-slate-50 text-slate-400 ring-slate-100' 
-                                                 : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
-                                              }`}
-                                           >
-                                              {res.viewed ? 'View Result' : 'Review Now'}
-                                           </button>
-                                           
-                                           {!showArchived ? (
-                                              <button 
-                                                 onClick={() => handleArchiveResult(res.id, true)}
-                                                 className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
-                                                 title="Archive Result"
-                                              >
-                                                 <Archive className="h-4 w-4" />
-                                              </button>
-                                           ) : (
-                                              <button 
-                                                 onClick={() => handleArchiveResult(res.id, false)}
-                                                 className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                 title="Restore Result"
-                                              >
-                                                 <ArchiveRestore className="h-4 w-4" />
-                                              </button>
-                                           )}
+                  <div className="rounded-[28px] border border-slate-100 bg-white shadow-sm overflow-hidden overflow-x-auto">
+                     <table className="w-full text-left border-collapse min-w-[900px]">
+                        <thead>
+                           <tr className="bg-slate-50/50">
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[240px]">Student</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[180px]">Assessment</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[180px]">Date</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-[100px]">Status</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                           {results
+                             .filter(res => showArchived ? res.isArchived === true : !res.isArchived)
+                             .filter(res => !searchTerm || res.name?.toLowerCase().includes(searchTerm.toLowerCase()) || res.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+                             .map((res) => (
+                              <tr key={res.id} className={`group transition-all ${res.viewed ? 'opacity-60 grayscale-[0.3]' : 'bg-white hover:bg-slate-50/50'}`}>
+                                 <td className="px-8 py-6">
+                                    <div className="flex items-center gap-3">
+                                       <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden ring-2 ring-white flex items-center justify-center text-[10px] font-black text-slate-400 capitalize">
+                                          {res.name?.charAt(0) || res.email?.charAt(0)}
+                                       </div>
+                                       <div>
+                                          <span className="font-extrabold text-slate-900 block truncate max-w-[160px]">{res.name}</span>
+                                          <span className="text-[10px] font-bold text-slate-400 block truncate max-w-[160px]">{res.email}</span>
+                                       </div>
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-6">
+                                    <span className="text-xs font-bold text-slate-500">{res.assessmentId?.split('_')[0] || "Test"}</span>
+                                 </td>
+                                 <td className="px-8 py-6 text-xs font-bold text-slate-400 tabular-nums">
+                                    {new Date(res.timestamp).toLocaleDateString([], { day: 'numeric', month: 'long' })}, {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                 </td>
+                                 <td className="px-8 py-6">
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase ring-1 ${res.viewed ? 'bg-slate-50 text-slate-400 ring-slate-100' : 'bg-emerald-50 text-[#059669] ring-emerald-100'}`}>
+                                       {res.viewed ? 'Reviewed' : 'Pending'}
+                                    </span>
+                                 </td>
+                                 <td className="px-8 py-6 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                       <button 
+                                          onClick={() => { setSelectedResult(res); markAsViewed(res.id); }} 
+                                          className={`px-3.5 py-1.5 text-xs font-black rounded-lg ring-1 transition-all ${
+                                             res.viewed 
+                                             ? 'bg-slate-50 text-slate-400 ring-slate-100' 
+                                             : 'bg-emerald-50 text-[#059669] ring-emerald-100 hover:bg-emerald-100'
+                                          }`}
+                                       >
+                                          {res.viewed ? 'View Result' : 'Review Now'}
+                                       </button>
+                                       
+                                       {!showArchived ? (
+                                          <button 
+                                             onClick={() => handleArchiveResult(res.id, true)}
+                                             className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                                             title="Archive Result"
+                                          >
+                                             <Archive className="h-4 w-4" />
+                                          </button>
+                                       ) : (
+                                          <button 
+                                             onClick={() => handleArchiveResult(res.id, false)}
+                                             className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors"
+                                             title="Restore Result"
+                                          >
+                                             <ArchiveRestore className="h-4 w-4" />
+                                          </button>
+                                       )}
 
-                                           <button 
-                                              onClick={() => handleDeleteResult(res.id)}
-                                              className="p-2 text-slate-200 hover:text-red-500 transition-colors"
-                                              title="Delete Result"
-                                           >
-                                              <Trash2 className="h-4 w-4" />
-                                           </button>
-                                        </div>
-                                     </td>
-                                  </tr>
-                               ))}
-                            </tbody>
-                        </table>
-                     </div>
+                                       <button 
+                                          onClick={() => handleDeleteResult(res.id)}
+                                          className="p-2 text-slate-200 hover:text-red-500 transition-colors"
+                                          title="Delete Result"
+                                       >
+                                          <Trash2 className="h-4 w-4" />
+                                       </button>
+                                    </div>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
                   </div>
                </div>
             )}

@@ -257,13 +257,15 @@ export default function Dashboard({ user }: { user: any }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-        <div className="mb-10 text-center lg:text-left">
-          <h1 className="font-display text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight">
-            Learning & Assessments
+      <main className="mx-auto max-w-7xl px-6 py-6 md:py-8 lg:px-8">
+        <div className="mb-6 md:mb-10 text-left">
+          <h1 className="font-display text-3xl md:text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight">
+            <span className="md:hidden">Assessments</span>
+            <span className="hidden md:block">Learning & Assessments</span>
           </h1>
-          <p className="mt-2 text-lg font-medium text-slate-400">
-            Track your progress and psychological evaluations in real-time.
+          <p className="mt-1 md:mt-2 text-sm md:text-lg font-medium text-slate-400">
+            <span className="md:hidden">Track your journey in real-time.</span>
+            <span className="hidden md:block">Track your progress and psychological evaluations in real-time.</span>
           </p>
         </div>
 
@@ -273,7 +275,7 @@ export default function Dashboard({ user }: { user: any }) {
              <span className="text-sm font-medium text-slate-500">Loading assessments...</span>
            </div>
         ) : (
-           <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 md:mt-12 grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
               {courses.map((course) => {
                 const state = getCardState(course.id);
                 const isDull = state.hasTaken && !state.isApproved;
@@ -281,68 +283,62 @@ export default function Dashboard({ user }: { user: any }) {
                 return (
                   <div
                     key={course.id}
-                    className={`group flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all duration-300 ${
+                    className={`group flex flex-col justify-between rounded-[24px] md:rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm transition-all duration-300 ${
                       isDull ? "opacity-70 bg-slate-50/50" : "hover:-translate-y-1 hover:shadow-xl hover:ring-1 hover:ring-indigo-100"
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-4 md:mb-6">
                         <div
-                          className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-colors ${
+                          className={`flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-2xl transition-colors ${
                             isDull
                               ? "bg-slate-200 text-slate-400"
                               : "bg-indigo-50 text-[#4F46E5] group-hover:bg-gradient-to-br group-hover:from-[#4F46E5] group-hover:to-[#8B5CF6] group-hover:text-white"
                           }`}
                         >
-                          <FileText className="h-7 w-7" />
+                          <FileText className="h-6 w-6 md:h-7 md:w-7" />
                         </div>
                         {state.hasTaken && (
                           <button
                             onClick={() => setReportPopup(course.id)}
-                            className="text-xs font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition"
+                            className="text-[10px] md:text-xs font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition"
                           >
                             View Report
                           </button>
                         )}
                       </div>
 
-                      <h3 className="font-display text-xl font-bold text-slate-900">
+                      <h3 className="font-display text-lg md:text-xl font-bold text-slate-900 line-clamp-1">
                         {course.title || "Untitled Assessment"}
                       </h3>
-                      <p className="mt-3 leading-relaxed text-slate-600 line-clamp-2">
+                      <p className="mt-2 md:mt-3 text-sm md:text-base leading-relaxed text-slate-500 line-clamp-2">
                         {course.description || "No description provided."}
                       </p>
 
                       {state.hasTaken && (
-                        <div className="mt-6">
+                        <div className="mt-4 md:mt-6">
                           {state.isApproved ? (
-                            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
-                              <p className="text-xs font-bold text-emerald-700">
+                            <div className="p-3 md:p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                              <p className="text-[11px] md:text-xs font-bold text-emerald-700">
                                 Your retest has been approved. You can take the test again.
                               </p>
                             </div>
                           ) : state.isPending ? (
-                            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
-                              <p className="text-xs font-bold text-amber-700">
+                            <div className="p-3 md:p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                              <p className="text-[11px] md:text-xs font-bold text-amber-700">
                                 Your request has been submitted and is under review.
                               </p>
                             </div>
                           ) : state.isDenied ? (
-                            <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
-                              <p className="text-xs font-bold text-red-600">
+                            <div className="p-3 md:p-4 rounded-2xl bg-red-50 border border-red-100">
+                              <p className="text-[11px] md:text-xs font-bold text-red-600">
                                 Your retake request was declined. You can request again.
                               </p>
                             </div>
-                          ) : state.hasFeedback ? (
-                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                              <p className="text-xs font-bold text-slate-500">
-                                Evaluated — view your report above.
-                              </p>
-                            </div>
                           ) : (
-                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 border-dashed">
-                              <p className="text-xs font-bold text-slate-400">
-                                Submitted — under review by administrator.
+                            <div className="p-3 md:p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                              <p className="text-[11px] md:text-xs font-bold text-slate-400">
+                                Evaluation completed. View detailed report above.
                               </p>
                             </div>
                           )}
@@ -350,8 +346,8 @@ export default function Dashboard({ user }: { user: any }) {
                       )}
                     </div>
 
-                    <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
-                      <span className="text-xs font-bold uppercase tracking-widest text-[#8B5CF6]">
+                    <div className="mt-6 md:mt-8 flex items-center justify-between border-t border-slate-100 pt-5 md:pt-6">
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#8B5CF6]">
                         {course.duration || "Self Paced"}
                       </span>
 
@@ -360,7 +356,7 @@ export default function Dashboard({ user }: { user: any }) {
                           href={`/test/${course.id}`}
                           className="flex items-center gap-1 text-sm font-semibold text-[#4F46E5] hover:text-[#3730A3]"
                         >
-                          Start Assessment
+                          Start Test
                           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                         </Link>
                       ) : state.isApproved ? (
@@ -368,22 +364,22 @@ export default function Dashboard({ user }: { user: any }) {
                           href={`/test/${course.id}`}
                           className="flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700"
                         >
-                          Retake Assessment
+                          Retake
                           <ArrowRight className="h-4 w-4" />
                         </Link>
                       ) : state.isPending ? (
                         <button
                           onClick={() => setRequestedPopup(course.id)}
-                          className="flex items-center gap-1 text-sm font-semibold text-amber-600 hover:text-amber-700 transition"
+                          className="flex items-center gap-1 text-xs md:text-sm font-bold text-amber-600 hover:text-amber-700 transition"
                         >
                           <Clock className="h-4 w-4" /> Request Sent
                         </button>
                       ) : (
                         <button
                           onClick={() => { setRetestPopup(course.id); setRetestNote(""); }}
-                          className="flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-slate-600 transition"
+                          className="flex items-center gap-1 text-xs md:text-sm font-bold text-slate-400 hover:text-slate-600 transition"
                         >
-                          <MessageSquare className="h-4 w-4" /> Request Retest
+                          <MessageSquare className="h-4 w-4" /> Retest
                         </button>
                       )}
                     </div>
@@ -396,14 +392,17 @@ export default function Dashboard({ user }: { user: any }) {
 
       {/* ═══════════ SCHEDULING LOCK POPUP ═══════════ */}
       {showScheduleLock && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowScheduleLock(false)} />
-          <div className="relative w-full max-w-md bg-white rounded-[28px] shadow-2xl p-10 animate-in fade-in zoom-in-95 duration-300 text-center">
-            <div className="mx-auto h-20 w-20 bg-amber-50 rounded-3xl flex items-center justify-center mb-6">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowScheduleLock(false)} />
+          <div className="relative w-full h-full md:h-auto md:max-w-md bg-white rounded-none md:rounded-[32px] shadow-2xl p-8 md:p-10 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-10 md:zoom-in-95 duration-300 text-center">
+            <button onClick={() => setShowScheduleLock(false)} className="md:hidden absolute top-6 right-6 p-2 rounded-full bg-slate-50 text-slate-400">
+               <X className="h-6 w-6" />
+            </button>
+            <div className="mx-auto h-20 w-20 bg-amber-50 rounded-[32px] flex items-center justify-center mb-8 shadow-inner">
               <ShieldAlert className="h-10 w-10 text-amber-500" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Access Restricted</h3>
-            <p className="mt-4 text-sm font-medium text-slate-500 leading-relaxed">
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Access Restricted</h3>
+            <p className="mt-5 text-base font-medium text-slate-500 leading-relaxed px-4 md:px-0">
               {(() => {
                 const reqTestName = globalSettings.requiredAssessmentId 
                   ? (courses.find(c => c.id === globalSettings.requiredAssessmentId)?.title || "the specified test")
@@ -421,10 +420,10 @@ export default function Dashboard({ user }: { user: any }) {
                   window.scrollTo({ top: 400, behavior: "smooth" });
                 }
               }}
-              className="mt-8 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition shadow-xl flex items-center justify-center gap-2 group"
+              className="mt-10 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition shadow-xl flex items-center justify-center gap-2 group"
             >
               <FileText className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition" />
-              {globalSettings.requiredAssessmentId ? "Start Required Assessment" : "View All Assessments"}
+              {globalSettings.requiredAssessmentId ? "Start Assessment" : "View Assessments"}
             </button>
           </div>
         </div>
@@ -432,21 +431,21 @@ export default function Dashboard({ user }: { user: any }) {
 
       {/* ═══════════ RETEST REQUEST POPUP ═══════════ */}
       {retestPopup && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setRetestPopup(null)} />
-          <div className="relative w-full max-w-md bg-white rounded-[28px] shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setRetestPopup(null)} />
+          <div className="relative w-full h-full md:h-auto md:max-w-md bg-white rounded-none md:rounded-[32px] shadow-2xl p-8 md:p-10 flex flex-col animate-in fade-in slide-in-from-bottom-10 md:zoom-in-95 duration-300">
+            <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-lg font-black text-slate-900">Request Retake</h3>
-                <p className="text-xs font-bold text-slate-400 mt-1">
-                  {courses.find((c) => c.id === retestPopup)?.title}
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none">Request Retake</h3>
+                <p className="text-sm font-bold text-slate-400 mt-2">
+                   {courses.find((c) => c.id === retestPopup)?.title}
                 </p>
               </div>
               <button
                 onClick={() => setRetestPopup(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
+                className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
               >
-                <X className="h-4 w-4 text-slate-400" />
+                <X className="h-5 w-5 text-slate-400" />
               </button>
             </div>
 
@@ -454,7 +453,7 @@ export default function Dashboard({ user }: { user: any }) {
               value={retestNote}
               onChange={(e) => setRetestNote(e.target.value)}
               placeholder="Why would you like to take this test again?"
-              className="w-full bg-slate-50 rounded-2xl p-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 transition min-h-[120px] resize-none"
+              className="w-full flex-1 md:flex-none md:min-h-[160px] bg-slate-50 border border-slate-100 rounded-[24px] p-6 text-base font-medium text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 transition resize-none"
             />
 
             <button
@@ -463,12 +462,12 @@ export default function Dashboard({ user }: { user: any }) {
                 const course = courses.find((c) => c.id === retestPopup);
                 if (course) handleRetestRequest(course.id, course.title || "Untitled");
               }}
-              className="mt-4 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl hover:bg-slate-800 transition disabled:opacity-30 flex items-center justify-center gap-2"
+              className="mt-6 md:mt-8 w-full rounded-2xl bg-slate-900 px-6 py-5 text-xs font-black uppercase tracking-widest text-white shadow-xl hover:bg-slate-800 transition disabled:opacity-30 flex items-center justify-center gap-2"
             >
               {isRequestingRetest ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
               ) : (
-                <><Send className="h-4 w-4" /> Submit Request</>
+                <><Send className="h-5 w-5" /> Submit Request</>
               )}
             </button>
           </div>
@@ -477,49 +476,55 @@ export default function Dashboard({ user }: { user: any }) {
 
       {/* ═══════════ REPORT POPUP ═══════════ */}
       {reportPopup && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setReportPopup(null)} />
-          <div className="relative w-full max-w-lg bg-white rounded-[28px] shadow-2xl animate-in fade-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Assessment Report</h3>
-                <p className="text-xs font-bold text-slate-400 mt-1">
-                  {courses.find((c) => c.id === reportPopup)?.title}
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setReportPopup(null)} />
+          <div className="relative w-full h-full md:h-auto md:max-w-xl bg-white rounded-none md:rounded-[32px] shadow-2xl animate-in fade-in slide-in-from-bottom-10 md:zoom-in-95 duration-300 overflow-hidden flex flex-col">
+            <div className="p-6 md:p-10 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex-1 pr-4">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none">Evaluation Report</h3>
+                <p className="text-sm font-bold text-slate-400 mt-2 truncate">
+                   {courses.find((c) => c.id === reportPopup)?.title}
                 </p>
               </div>
               <button
                 onClick={() => setReportPopup(null)}
-                className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
+                className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
               >
-                <X className="h-4 w-4 text-slate-400" />
+                <X className="h-5 w-5 text-slate-400" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 md:space-y-8 bg-[#F8FAFC]">
               {userResults
                 .filter((r) => r.assessmentId === reportPopup)
                 .map((res) => (
-                  <div key={res.id} className="p-6 rounded-2xl border border-slate-100 bg-slate-50/30">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-[10px] font-black text-[#4F46E5] uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">
-                        {new Date(res.timestamp).toLocaleDateString([], {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </span>
-                      <ShieldCheck className="h-4 w-4 text-slate-300" />
+                  <div key={res.id} className="p-6 md:p-8 rounded-[28px] border border-white bg-white shadow-sm shadow-slate-200/50">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex flex-col">
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Submitted On</span>
+                         <span className="text-sm font-bold text-slate-800">
+                           {new Date(res.timestamp).toLocaleDateString([], {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                           })}
+                         </span>
+                      </div>
+                      <div className="h-10 w-10 bg-emerald-50 rounded-full flex items-center justify-center">
+                         <ShieldCheck className="h-5 w-5 text-emerald-500" />
+                      </div>
                     </div>
-                    <div className="p-4 rounded-xl bg-white border border-slate-100">
-                      <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                        {res.feedback || "No feedback has been recorded for this session yet."}
-                      </p>
+                    <div className="p-6 rounded-[20px] bg-slate-50/50 border border-slate-100">
+                       <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3">Admin Feedback</p>
+                       <p className="text-sm md:text-base font-medium text-slate-600 leading-relaxed italic">
+                         "{res.feedback || "Ongoing evaluation. Please check back later for detailed feedback."}"
+                       </p>
                     </div>
                   </div>
                 ))}
-              {userResults.filter((r) => r.assessmentId === reportPopup).length === 0 && (
-                <p className="text-sm font-bold text-slate-300 text-center py-8">No results found.</p>
-              )}
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-white md:hidden">
+               <button onClick={() => setReportPopup(null)} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest">Close Report</button>
             </div>
           </div>
         </div>
@@ -530,40 +535,40 @@ export default function Dashboard({ user }: { user: any }) {
         const retest = userRetests.find(r => r.assessmentId === requestedPopup && r.status === 'pending');
         const courseName = courses.find(c => c.id === requestedPopup)?.title || "Assessment";
         return (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setRequestedPopup(null)} />
-            <div className="relative w-full max-w-md bg-white rounded-[28px] shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-300">
-              <div className="flex items-center justify-between mb-6">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-6">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setRequestedPopup(null)} />
+            <div className="relative w-full h-full md:h-auto md:max-w-md bg-white rounded-none md:rounded-[32px] shadow-2xl p-8 md:p-10 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-10 duration-300">
+              <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Request Sent</h3>
-                  <p className="text-xs font-bold text-slate-400 mt-1">{courseName}</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none">Request Sent</h3>
+                  <p className="text-sm font-bold text-slate-400 mt-2">{courseName}</p>
                 </div>
                 <button
                   onClick={() => setRequestedPopup(null)}
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
+                  className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 transition"
                 >
-                  <X className="h-4 w-4 text-slate-400" />
+                  <X className="h-5 w-5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 mb-4">
-                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Your Message</p>
-                <p className="text-sm font-medium text-amber-900 leading-relaxed">
-                  {retest?.note || "Retest requested"}
+              <div className="p-6 rounded-[24px] bg-amber-50/50 border border-amber-100 mb-6">
+                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3">Your Justification</p>
+                <p className="text-sm md:text-base font-medium text-amber-900 leading-relaxed italic">
+                  "{retest?.note || "Standard retest request submitted."}"
                 </p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                  Your message has been sent to the admin. Please wait until the paper is resumed. You will be notified once the admin reviews your request.
+              <div className="p-6 rounded-[24px] bg-slate-50/50 border border-slate-100 border-dashed">
+                <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                  Your request is currently being reviewed by the administration. You will be able to retake the test once the approval is processed.
                 </p>
               </div>
 
               <button
                 onClick={() => setRequestedPopup(null)}
-                className="mt-6 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition"
+                className="mt-10 w-full rounded-2xl bg-slate-900 px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition"
               >
-                Understood
+                Close Status
               </button>
             </div>
           </div>
